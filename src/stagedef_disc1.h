@@ -12,7 +12,7 @@
 		1, 1,
 		XA_Bopeebo, 0,
 		
-		StageId_1_2, STAGE_LOAD_FLAG | STAGE_LOAD_STAGE | STAGE_LOAD_OPPONENT
+		StageId_1_2, 0,
 	},
 	{ //StageId_1_2 (Endless)
 		//Characters
@@ -28,7 +28,7 @@
 		1, 2,
 		XA_Fresh, 2,
 		
-		StageId_1_3, STAGE_LOAD_FLAG | STAGE_LOAD_STAGE | STAGE_LOAD_OPPONENT
+		StageId_1_3, 0,
 	},
 	{ //StageId_1_3 (Execution)
 		//Characters
