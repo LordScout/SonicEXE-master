@@ -154,8 +154,8 @@ static void Menu_DifficultySelector(s32 x, s32 y)
 		{{240, 64, 16, 32}, {240, 96, 16, 32}}, //right
 	};
 	
-	Gfx_BlitTex(&menu.tex_story, &arrow_src[0][(pad_state.held & PAD_LEFT) != 0], x - 40 - 16, y - 16);
-	Gfx_BlitTex(&menu.tex_story, &arrow_src[1][(pad_state.held & PAD_RIGHT) != 0], x + 40, y - 16);
+	Gfx_BlitTex(&menu.tex_story, &arrow_src[0][(pad_state.held & PAD_LEFT) != 0], x - 40 - 16, y + 23);
+	Gfx_BlitTex(&menu.tex_story, &arrow_src[1][(pad_state.held & PAD_RIGHT) != 0], x + 40, y + 23);
 	
 	//Draw difficulty
 	static const RECT diff_srcs[] = {
@@ -165,7 +165,7 @@ static void Menu_DifficultySelector(s32 x, s32 y)
 	};
 	
 	const RECT *diff_src = &diff_srcs[menu.page_param.stage.diff];
-	Gfx_BlitTex(&menu.tex_story, diff_src, x - (diff_src->w >> 1), y - 9 + ((pad_state.press & (PAD_LEFT | PAD_RIGHT)) != 0));
+	Gfx_BlitTex(&menu.tex_story, diff_src, x - (diff_src->w >> 1), y + 30 + ((pad_state.press & (PAD_LEFT | PAD_RIGHT)) != 0));
 }
 
 static void Menu_DrawWeek(const char *week, s32 x, s32 y)
@@ -559,7 +559,7 @@ void Menu_Tick(void)
 			}
 			
 			//Draw difficulty selector
-			Menu_DifficultySelector(SCREEN_WIDTH - 75, 80);
+			Menu_DifficultySelector(SCREEN_WIDTH - 75, 40);
 			
 			//Handle option and selection
 			if (menu.trans_time > 0 && (menu.trans_time -= timer_dt) <= 0)
@@ -917,7 +917,7 @@ void Menu_Tick(void)
 				if (pad_state.press & PAD_CIRCLE)
 				{
 					menu.next_page = MenuPage_Main;
-					menu.next_select = 3; //Options
+					menu.next_select = 2; //Options
 					Trans_Start();
 				}
 			}
