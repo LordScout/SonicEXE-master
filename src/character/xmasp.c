@@ -47,18 +47,18 @@ typedef struct
 
 //Christmas Parents definitions
 static const CharFrame char_xmasp_frame[] = {
-	{XmasP_ArcMain_Idle0, {0,   0, 127, 206}, { 60, 202}}, //0 idle 1
-	{XmasP_ArcMain_Idle1, {0,   0, 127, 205}, { 58, 201}}, //1 idle 2
-	{XmasP_ArcMain_Idle2, {0,   0, 127, 205}, { 58, 201}}, //2 idle 3
-	{XmasP_ArcMain_Idle3, {0,   0, 127, 206}, { 60, 202}}, //3 idle 4
+	{XmasP_ArcMain_Idle0, {0,   0, 127, 206}, { 60, 203}}, //0 idle 1
+	{XmasP_ArcMain_Idle1, {0,   0, 127, 205}, { 58, 202}}, //1 idle 2
+	{XmasP_ArcMain_Idle2, {0,   0, 127, 205}, { 58, 202}}, //2 idle 3
+	{XmasP_ArcMain_Idle3, {0,   0, 127, 206}, { 60, 203}}, //3 idle 4
 	
-	{XmasP_ArcMain_LeftA0, {0,   0, 135, 195}, {108, 198}}, //4 left a 1
-	{XmasP_ArcMain_LeftA1, {0,   0, 147, 194}, {115, 198}}, //5 left a 2
+	{XmasP_ArcMain_LeftA0, {0,   0, 135, 195}, {108, 193}}, //4 left a 1
+	{XmasP_ArcMain_LeftA1, {0,   0, 147, 194}, {115, 193}}, //5 left a 2
 	{XmasP_ArcMain_LeftB0, {0,   0, 147, 212}, { 52, 188}}, //6 left b 1
 	{XmasP_ArcMain_LeftB1, {0,   0, 143, 207}, { 55, 188}}, //7 left b 2
 	
-	{XmasP_ArcMain_DownA0, {0,   0, 126, 214}, { 95, 205}}, //8 down a 1
-	{XmasP_ArcMain_DownA1, {0,   0, 127, 207}, { 95, 195}}, //9 down a 2
+	{XmasP_ArcMain_DownA0, {0,   0, 126, 216}, { 95, 200}}, //8 down a 1
+	{XmasP_ArcMain_DownA1, {0,   0, 127, 207}, { 95, 192}}, //9 down a 2
 	{XmasP_ArcMain_DownB0, {0,   0, 147, 212}, { 80, 192}}, //10 down b 1
 	{XmasP_ArcMain_DownB1, {0,   0, 143, 207}, { 80, 192}}, //11 down b 2
 	
@@ -67,9 +67,9 @@ static const CharFrame char_xmasp_frame[] = {
 	{XmasP_ArcMain_UpB0, {0,   0, 147, 212}, { 47, 211}}, //14 up b 1
 	{XmasP_ArcMain_UpB1, {0,   0, 143, 207}, { 49, 210}}, //15 up b 2
 	
-	{XmasP_ArcMain_RightA0, {0,   0, 145, 216}, { 57, 219}}, //16 right a 1
-	{XmasP_ArcMain_RightA1, {0,   0, 137, 220}, { 63, 222}}, //17 right a 2
-	{XmasP_ArcMain_RightB0, {0,   0, 147, 212}, { 78, 196}}, //18 right b 1
+	{XmasP_ArcMain_RightA0, {0,   0, 145, 216}, { 57, 214}}, //16 right a 1
+	{XmasP_ArcMain_RightA1, {0,   0, 137, 220}, { 63, 217}}, //17 right a 2
+	{XmasP_ArcMain_RightB0, {0,   0, 147, 212}, { 78, 191}}, //18 right b 1
 	{XmasP_ArcMain_RightB1, {0,   0, 143, 207}, { 60, 198}}, //19 right b 2
 };
 
