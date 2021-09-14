@@ -8,7 +8,7 @@
 		Back_Week1_New,
 		
 		//Song info
-		{FIXED_DEC(1,1),FIXED_DEC(1,1),FIXED_DEC(13,10)},
+		{FIXED_DEC(25,10),FIXED_DEC(25,10),FIXED_DEC(25,10)},
 		1, 1,
 		XA_Bopeebo, 0,
 		
@@ -24,7 +24,7 @@
 		Back_Week2_New,
 		
 		//Song info
-		{FIXED_DEC(1,1),FIXED_DEC(13,10),FIXED_DEC(18,10)},
+		{FIXED_DEC(20,10),FIXED_DEC(20,10),FIXED_DEC(20,10)},
 		1, 2,
 		XA_Fresh, 2,
 		
@@ -40,7 +40,7 @@
 		Back_Week7_New,
 		
 		//Song info
-		{FIXED_DEC(13,10),FIXED_DEC(15,10),FIXED_DEC(23,10)},
+		{FIXED_DEC(10,10),FIXED_DEC(20,10),FIXED_DEC(26,10)},
 		1, 3,
 		XA_Dadbattle, 0,
 		
