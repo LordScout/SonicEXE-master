@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include "animation.h"
 
 #include "timer.h"
@@ -22,8 +28,6 @@ void Animatable_SetAnim(Animatable *this, u8 anim)
 void Animatable_Animate(Animatable *this, void *user, void (*set_frame)(void*, u8))
 {
 	//Wait for time
-	this->anim_time -= timer_dt;
-	
 	while (this->anim_time <= 0)
 	{
 		//Read script
@@ -48,6 +52,7 @@ void Animatable_Animate(Animatable *this, void *user, void (*set_frame)(void*, u
 				break;
 		}
 	}
+	this->anim_time -= timer_dt;
 }
 
 boolean Animatable_Ended(Animatable *this)

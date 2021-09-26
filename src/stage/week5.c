@@ -36,19 +36,15 @@ void Back_Week5_DrawBG(StageBack *back)
 	fx = stage.camera.x;
 	fy = stage.camera.y;
 	
-	RECT snow_src = {120, 155, 136, 101};
+	RECT snow_src = {0, 0, 214, 124};
 	RECT_FIXED snow_dst = {
-		FIXED_DEC(-350,1) - fx,
-		FIXED_DEC(44,1) - fy,
-		FIXED_DEC(570,1),
-		FIXED_DEC(27,1)
+		FIXED_DEC(-240,1) - fx,
+		FIXED_DEC(-180,1) - fy,
+		FIXED_DEC(400,1),
+		FIXED_DEC(300,1)
 	};
 	
-	Stage_DrawTex(&this->tex_back2, &snow_src, &snow_dst, stage.camera.bzoom);
-	snow_src.y = 255; snow_src.h = 0;
-	snow_dst.y += snow_dst.h - FIXED_UNIT;
-	snow_dst.h *= 3;
-	Stage_DrawTex(&this->tex_back2, &snow_src, &snow_dst, stage.camera.bzoom);
+	Stage_DrawTex(&this->tex_back3, &snow_src, &snow_dst, stage.camera.bzoom);
 	
 	//Draw boppers
 	static const struct Back_Week5_LowerBop
@@ -56,12 +52,9 @@ void Back_Week5_DrawBG(StageBack *back)
 		RECT src;
 		RECT_FIXED dst;
 	} lbop_piece[] = {
-		{{0, 0, 80, 102}, {FIXED_DEC(-315,1), FIXED_DEC(-30,1), FIXED_DEC(80,1), FIXED_DEC(102,1)}},
-		{{175, 3, 74, 151}, {FIXED_DEC(-120,1), FIXED_DEC(-80,1), FIXED_DEC(74,1), FIXED_DEC(151,1)}},
-		{{81, 0, 70, 128}, {FIXED_DEC(30,1), FIXED_DEC(-70,1), FIXED_DEC(70,1), FIXED_DEC(128,1)}},
-		{{151, 0, 23, 132}, {FIXED_DEC(100,1), FIXED_DEC(-70,1), FIXED_DEC(23,1), FIXED_DEC(132,1)}},
-		{{0, 109, 41, 139}, {FIXED_DEC(123,1), FIXED_DEC(-69,1), FIXED_DEC(41,1), FIXED_DEC(139,1)}},
-		{{41, 126, 69, 130}, {FIXED_DEC(164,1), FIXED_DEC(-52,1), FIXED_DEC(69,1), FIXED_DEC(130,1)}},
+		{{0, 0, 41, 93}, {FIXED_DEC(-173,1), FIXED_DEC(-75,1), FIXED_DEC(41,1), FIXED_DEC(93,1)}},
+		{{42, 0, 67, 151}, {FIXED_DEC(-28,1), FIXED_DEC(-80,1), FIXED_DEC(67,1), FIXED_DEC(151,1)}},
+		{{109, 0, 40, 91}, {FIXED_DEC(51,1), FIXED_DEC(-80,1), FIXED_DEC(40,1), FIXED_DEC(91,1)}},
 	};
 	
 	const struct Back_Week5_LowerBop *lbop_p = lbop_piece;
@@ -86,13 +79,11 @@ void Back_Week5_DrawBG(StageBack *back)
 		fixed_t scale;
 	} floor_piece[] = {
 		{{  0, 0, 161, 256}, FIXED_DEC(14,10)},
-		{{161, 0,   9, 256}, FIXED_DEC(7,1)},
-		{{171, 0,  85, 256}, FIXED_DEC(14,10)},
 	};
 	
 	RECT_FIXED floor_dst = {
-		FIXED_DEC(-220,1) - fx,
-		FIXED_DEC(-115,1) - fy,
+		FIXED_DEC(-999,1) - fx,
+		FIXED_DEC(-999,1) - fy,
 		0,
 		FIXED_DEC(180,1)
 	};
@@ -111,8 +102,8 @@ void Back_Week5_DrawBG(StageBack *back)
 		RECT src;
 		RECT_FIXED dst;
 	} ubop_piece[] = {
-		{{0, 0, 256, 76}, {FIXED_DEC(-200,1), FIXED_DEC(-132,1), FIXED_DEC(256,1)*6/7, FIXED_DEC(76,1)*6/7}},
-		{{0, 76, 256, 76}, {FIXED_DEC(50,1), FIXED_DEC(-132,1), FIXED_DEC(256,1)*6/7, FIXED_DEC(76,1)*6/7}}
+		{{0, 0, 256, 76}, {FIXED_DEC(-200,1), FIXED_DEC(-999,1), FIXED_DEC(256,1)*6/7, FIXED_DEC(76,1)*6/7}},
+		{{0, 76, 256, 76}, {FIXED_DEC(50,1), FIXED_DEC(-999,1), FIXED_DEC(256,1)*6/7, FIXED_DEC(76,1)*6/7}}
 	};
 	
 	const struct Back_Week5_UpperBop *ubop_p = ubop_piece;
@@ -128,17 +119,15 @@ void Back_Week5_DrawBG(StageBack *back)
 	}
 	
 	//Draw back wall
-	fx = stage.camera.x >> 3;
-	fy = stage.camera.y >> 3;
+	fx = stage.camera.x;
+	fy = stage.camera.y;
 	
 	static const struct Back_Week5_WallPiece
 	{
 		RECT src;
 		fixed_t scale;
 	} wall_piece[] = {
-		{{  0, 0, 113, 256}, FIXED_DEC(1,1)},
-		{{113, 0,   6, 256}, FIXED_DEC(17,1)},
-		{{119, 0, 137, 256}, FIXED_DEC(1,1)},
+		{{  0, 0, 0, 0}, FIXED_DEC(1,1)},
 	};
 	
 	RECT_FIXED wall_dst = {
@@ -147,13 +136,16 @@ void Back_Week5_DrawBG(StageBack *back)
 		0,
 		FIXED_DEC(190,1)
 	};
+
+	fx = stage.camera.x;
+	fy = stage.camera.y;
 	
-	RECT wall_src = {0, 255, 0, 0};
+	RECT wall_src = {0,  0, 256, 256};
 	RECT_FIXED wall_fill;
-	wall_fill.x = wall_dst.x;
-	wall_fill.y = wall_dst.y + wall_dst.h - FIXED_UNIT;
-	wall_fill.w = FIXED_DEC(500,1);
-	wall_fill.h = FIXED_DEC(100,1);
+	wall_fill.x = FIXED_DEC(-218, 1) - fx;
+	wall_fill.y = FIXED_DEC(-175,1) - fy;
+	wall_fill.w = FIXED_DEC(395,1);
+	wall_fill.h = FIXED_DEC(400,1);
 	Stage_DrawTex(&this->tex_back0, &wall_src, &wall_fill, stage.camera.bzoom);
 	
 	const struct Back_Week5_WallPiece *wall_p = wall_piece;

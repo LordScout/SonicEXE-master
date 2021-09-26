@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #ifndef _CHARACTER_H
 #define _CHARACTER_H
 
@@ -6,6 +12,10 @@
 
 #include "fixed.h"
 #include "animation.h"
+
+//Character specs
+typedef u8 CharSpec;
+#define CHAR_SPEC_MISSANIM (1 << 0) //Has miss animations
 
 //Character enums
 typedef enum
@@ -37,13 +47,15 @@ typedef struct Character
 	//Position
 	fixed_t x, y;
 	
-	//Stage information
+	//Character information
+	CharSpec spec;
 	u8 health_i; //hud1.tim
 	fixed_t focus_x, focus_y, focus_zoom;
 	
 	//Animation state
 	Animatable animatable;
 	fixed_t sing_end;
+	u16 pad_held;
 } Character;
 
 //Character functions

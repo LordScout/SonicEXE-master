@@ -17,6 +17,7 @@ SRCS = src/main.c \
        src/psx/audio.c \
        src/psx/pad.c \
        src/psx/timer.c \
+       src/psx/movie.c \
        src/stage/dummy.c \
        src/stage/week1.c \
        src/stage/week2.c \
@@ -35,6 +36,7 @@ SRCS = src/main.c \
        src/character/mom.c \
        src/character/xmasp.c \
        src/character/senpai.c \
+       src/character/senpaim.c \
        src/character/tank.c \
        src/character/gf.c \
        src/character/clucky.c \

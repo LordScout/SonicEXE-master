@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include "tank.h"
 
 #include "../mem.h"
@@ -11,10 +17,16 @@ enum
 {
 	Tank_ArcMain_Idle0,
 	Tank_ArcMain_Idle1,
+	Tank_ArcMain_Idle2,
+	Tank_ArcMain_Idle3,
 	Tank_ArcMain_Left,
+	Tank_ArcMain_Left1,
 	Tank_ArcMain_Down,
+	Tank_ArcMain_Down1,
 	Tank_ArcMain_Up,
+	Tank_ArcMain_Up1,
 	Tank_ArcMain_Right,
+	Tank_ArcMain_Right1,
 	
 	Tank_ArcScene_0, //ugh0 good0
 	Tank_ArcScene_1, //ugh1 good1
@@ -42,27 +54,27 @@ typedef struct
 
 //Tank character definitions
 static const CharFrame char_tank_frame[] = {
-	{Tank_ArcMain_Idle0, {  0,   0,   0,   0}, { 51, 125}}, //0 idle 1
-	{Tank_ArcMain_Idle0, {  0,   0,   0,   0}, { 59, 126}}, //1 idle 2
-	{Tank_ArcMain_Idle1, {  0,   0,   0,   0}, { 52, 130}}, //2 idle 3
-	{Tank_ArcMain_Idle1, {  0,   0,   0,   0}, { 53, 129}}, //3 idle 4
+	{Tank_ArcMain_Idle0, {  0,   0, 149, 143}, { 51, 125}}, //0 idle 1
+	{Tank_ArcMain_Idle1, {  0,   0, 152, 143}, { 90, 125}}, //1 idle 2
+	{Tank_ArcMain_Idle2, {  0,   0, 149, 144}, { 52, 125}}, //2 idle 3
+	{Tank_ArcMain_Idle3, {  0,   0, 152, 143}, { 10, 125}}, //3 idle 4
 	
-	{Tank_ArcMain_Left, {  0,   0,   0,   0}, { 75, 126}}, //4 left 1
-	{Tank_ArcMain_Left, {  0,   0,   0,   0}, { 72, 127}}, //5 left 1
+	{Tank_ArcMain_Left, {  0,   0, 222, 197}, { 80, 171}}, //4 left 1
+	{Tank_ArcMain_Left1, { 0,   0, 217, 198}, { 82, 172}}, //5 left 1
 	
-	{Tank_ArcMain_Down, {  0,   0,   0,   0}, { 68, 100}}, //6 down 1
-	{Tank_ArcMain_Down, {  0,   0,   0,   0}, { 68, 102}}, //7 down 2
+	{Tank_ArcMain_Down, {  0,   0, 177, 127}, { 70, 102}}, //6 down 1
+	{Tank_ArcMain_Down1, {  0,  0, 169, 136}, { 70, 113}}, //7 down 2
 	
-	{Tank_ArcMain_Up, {  0,   0,   0,   0}, { 62, 144}}, //8 up 1
-	{Tank_ArcMain_Up, {  0,   0,   0,   0}, { 66, 142}}, //9 up 2
+	{Tank_ArcMain_Up, {  0,   0, 145, 153}, { 35, 132}}, //8 up 1
+	{Tank_ArcMain_Up1, {  0,   0, 151, 145}, { 37, 125}}, //9 up 2
 	
-	{Tank_ArcMain_Right, {  0,   0,   0,   0}, { 48, 119}}, //10 right 1
-	{Tank_ArcMain_Right, {  0,   0,   0,   0}, { 46, 123}}, //11 right 2
+	{Tank_ArcMain_Right, {  0,   0, 134, 150}, { 25, 130}}, //10 right 1
+	{Tank_ArcMain_Right1, { 0,   0, 132, 151}, { 27, 131}}, //11 right 2
 	
-	{Tank_ArcScene_0, {  0,   0,   0,   0}, { 48, 125}}, //12 ugh 0
-	{Tank_ArcScene_0, {  0,   0,   0,   0}, { 50, 128}}, //13 ugh 1
-	{Tank_ArcScene_1, {  0,   0,   0,   0}, { 49, 128}}, //14 ugh 2
-	{Tank_ArcScene_1, {  0,   0,   0,   0}, { 49, 128}}, //15 ugh 3
+	{Tank_ArcScene_0, {  0,   0, 127, 97}, { 40, 90}}, //12 ugh 0
+	{Tank_ArcScene_0, {  0,   0, 127, 97}, { 40, 90}}, //12 ugh 0
+	{Tank_ArcScene_1, {  0,   0, 127, 97}, { 40, 90}}, //12 ugh 0
+	{Tank_ArcScene_1, {  0,   0, 127, 97}, { 40, 90}}, //12 ugh 0
 	
 	
 	{Tank_ArcScene_0, {  0,   0, 128, 256}, { 53, 128}}, //16 good 0
@@ -75,7 +87,7 @@ static const CharFrame char_tank_frame[] = {
 };
 
 static const Animation char_tank_anim[CharAnim_Max] = {
-	{2, (const u8[]){ 0,  1,  2,  3, ASCR_BACK, 1}},                                           //CharAnim_Idle
+	{2, (const u8[]){ 0, 0,  1, 1,  2, 2,  3, 3, 0, 0,  1, 1,  2, 2,  3, 3, 0, 0,  1, 1,  2, 2,  3, 3, 0, 0,  1, 1,  2, 2,  3, 3, 0, 0,  1, 1,  2, 2,  3, 3, 0, 0,  1, 1,  2, 2,  3, 3, ASCR_BACK, 1}},                                           //CharAnim_Idle
 	{2, (const u8[]){ 4,  5, ASCR_BACK, 1}},                                                   //CharAnim_Left
 	{0, (const u8[]){ASCR_CHGANI, CharAnim_Idle}},                                             //CharAnim_LeftAlt
 	{2, (const u8[]){ 6,  7, ASCR_BACK, 1}},                                                   //CharAnim_Down
@@ -83,7 +95,7 @@ static const Animation char_tank_anim[CharAnim_Max] = {
 	                 19, 20, 21, 22, ASCR_BACK, 1}},
 	{2, (const u8[]){ 8,  9, ASCR_BACK, 1}},                                                   //CharAnim_Up
 	{2, (const u8[]){12, 13, 14, 15, ASCR_BACK, 1}},                                           //CharAnim_UpAlt
-	{2, (const u8[]){10, 11, ASCR_BACK, 1}},                                                   //CharAnim_Right
+	{2, (const u8[]){11, 10, ASCR_BACK, 1}},                                                   //CharAnim_Right
 	{0, (const u8[]){ASCR_CHGANI, CharAnim_Idle}},                                             //CharAnim_RightAlt
 };
 
@@ -106,8 +118,23 @@ void Char_Tank_Tick(Character *character)
 {
 	Char_Tank *this = (Char_Tank*)character;
 	
+	//Camera stuff
+	if ((stage.flag & STAGE_FLAG_JUST_STEP) && stage.song_step >= 60)
+	{
+		this->character.focus_x = FIXED_DEC(30, 1);
+		this->character.focus_y = FIXED_DEC(-74, 1);
+		this->character.focus_zoom = FIXED_DEC(16, 10);
+	}
+	if ((stage.flag & STAGE_FLAG_JUST_STEP) && stage.song_step >= 96)
+	{
+		this->character.focus_x = FIXED_DEC(65, 1);
+		this->character.focus_y = FIXED_DEC(-80, 1);
+		this->character.focus_zoom = FIXED_DEC(1, 1);
+	}
+
 	//Perform idle dance
-	if (character->animatable.anim != CharAnim_DownAlt) //Don't interrupt "Heh, pretty good!" sequence
+	if ((character->pad_held & (INPUT_LEFT | INPUT_DOWN | INPUT_UP | INPUT_RIGHT)) == 0 &&
+	     character->animatable.anim != CharAnim_DownAlt) //Don't interrupt "Heh, pretty good!" sequence
 		Character_PerformIdle(character);
 	
 	//Animate
@@ -156,7 +183,7 @@ void Char_Tank_SetAnim(Character *character, u8 anim)
 	if (anim == CharAnim_DownAlt && character->animatable.anim != CharAnim_DownAlt)
 	{
 		character->focus_x = FIXED_DEC(120,1);
-		character->focus_y = FIXED_DEC(-100,1);
+		character->focus_y = FIXED_DEC(-70,1);
 		character->focus_zoom = FIXED_DEC(78, 100);
 	}
 	else if (anim != CharAnim_DownAlt && character->animatable.anim == CharAnim_DownAlt)
@@ -197,7 +224,9 @@ Character *Char_Tank_New(fixed_t x, fixed_t y)
 	Animatable_Init(&this->character.animatable, char_tank_anim);
 	Character_Init((Character*)this, x, y);
 	
-	//Set character stage information
+	//Set character information
+	this->character.spec = 0;
+	
 	this->character.health_i = 10;
 	
 	this->character.focus_x = FIXED_DEC(65,1);
@@ -210,10 +239,16 @@ Character *Char_Tank_New(fixed_t x, fixed_t y)
 	const char **pathp = (const char *[]){
 		"idle0.tim", //Tank_ArcMain_Idle0
 		"idle1.tim", //Tank_ArcMain_Idle1
+		"idle2.tim", //Tank_ArcMain_Idle0
+		"idle3.tim", //Tank_ArcMain_Idle1
 		"left.tim",  //Tank_ArcMain_Left
+		"left1.tim",  //Tank_ArcMain_Left
 		"down.tim",  //Tank_ArcMain_Down
+		"down1.tim",
 		"up.tim",    //Tank_ArcMain_Up
+		"up1.tim",
 		"right.tim", //Tank_ArcMain_Right
+		"right1.tim",
 		NULL
 	};
 	IO_Data *arc_ptr = this->arc_ptr;
@@ -223,7 +258,7 @@ Character *Char_Tank_New(fixed_t x, fixed_t y)
 	//Load scene art
 	switch (stage.stage_id)
 	{
-		case StageId_7_1: //Ugh
+		case StageId_2_1: //Ugh
 		{
 			//Load "Ugh" art
 			this->arc_scene = IO_Read("\\CHAR\\TANKUGH.ARC;1");

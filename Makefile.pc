@@ -9,10 +9,10 @@ GL = MODERN
 
 # Win32
 ifeq ($(OS),Windows_NT)
-  WINDOWS := 1
+  WINDOWS ?= 1
 endif
 ifeq ($(WINDOWS),1)
-  CFLAGS += -mwindows
+  CFLAGS += -DPSXF_WIN32 -mwindows
 endif
 
 # Options
@@ -28,6 +28,13 @@ ifeq ($(GL), LEGACY)
 endif
 ifeq ($(GL), ES)
   CFLAGS += -DPSXF_GL=PSXF_GL_ES
+endif
+
+ifeq ($(NETWORK), 1)
+  CFLAGS += -DPSXF_NETWORK
+  ifeq ($(WINDOWS),1)
+    LIBS += -lws2_32
+  endif
 endif
 
 # Release and debug
@@ -86,6 +93,7 @@ SOURCES = main \
           pc/audio \
           pc/pad \
           pc/timer \
+          pc/movie \
           stage/dummy \
           stage/week1 \
           stage/week2 \
@@ -104,9 +112,10 @@ SOURCES = main \
           character/mom \
           character/xmasp \
           character/senpai \
+          character/senpaim \
           character/tank \
           character/gf \
-		  character/clucky \
+          character/clucky \
           object \
           object/combo \
           object/splash
@@ -114,6 +123,11 @@ SOURCES = main \
 ifneq ($(GL), ES)
   # Link glad
   SOURCES += pc/glad/glad
+endif
+
+ifeq ($(NETWORK), 1)
+  # Compile networking
+  SOURCES += pc/network
 endif
 
 # What to compile

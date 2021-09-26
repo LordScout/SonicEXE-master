@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include "stage.h"
 
 #include "mem.h"
@@ -6,6 +12,8 @@
 #include "pad.h"
 #include "main.h"
 #include "random.h"
+#include "movie.h"
+#include "network.h"
 
 #include "menu.h"
 #include "trans.h"
@@ -15,27 +23,25 @@
 #include "object/splash.h"
 
 //Stage constants
-//#define STAGE_PERFECT //Play all notes perfectly
+#//define STAGE_PERFECT //Play all notes perfectly
 //#define STAGE_NOHUD //Disable the HUD
 
 //#define STAGE_FREECAM //Freecam
 
-//#define STAGE_FUNKYFRIDAY //Funky Friday
-
 static const fixed_t note_x[8] = {
 	//BF
-	 FIXED_DEC(26 + (SCREEN_WIDEADD2 >> 1),1),
-	 FIXED_DEC(60 + (SCREEN_WIDEADD2 >> 1),1),//+34
-	 FIXED_DEC(94 + (SCREEN_WIDEADD2 >> 1),1),
-	FIXED_DEC(128 + (SCREEN_WIDEADD2 >> 1),1),
+	 FIXED_DEC(26,1) + FIXED_DEC(SCREEN_WIDEADD,4),
+	 FIXED_DEC(60,1) + FIXED_DEC(SCREEN_WIDEADD,4),//+34
+	 FIXED_DEC(94,1) + FIXED_DEC(SCREEN_WIDEADD,4),
+	FIXED_DEC(128,1) + FIXED_DEC(SCREEN_WIDEADD,4),
 	//Opponent
-	FIXED_DEC(-128 - (SCREEN_WIDEADD2 >> 1),1),
-	 FIXED_DEC(-94 - (SCREEN_WIDEADD2 >> 1),1),//+34
-	 FIXED_DEC(-60 - (SCREEN_WIDEADD2 >> 1),1),
-	 FIXED_DEC(-26 - (SCREEN_WIDEADD2 >> 1),1),
+	FIXED_DEC(-128,1) - FIXED_DEC(SCREEN_WIDEADD,4),
+	 FIXED_DEC(-94,1) - FIXED_DEC(SCREEN_WIDEADD,4),//+34
+	 FIXED_DEC(-60,1) - FIXED_DEC(SCREEN_WIDEADD,4),
+	 FIXED_DEC(-26,1) - FIXED_DEC(SCREEN_WIDEADD,4),
 };
-static const u16 note_key[] = {INPUT_LEFT, INPUT_DOWN, INPUT_UP, INPUT_RIGHT};
 static const fixed_t note_y = FIXED_DEC(32 - SCREEN_HEIGHT2, 1);
+static const u16 note_key[] = {INPUT_LEFT, INPUT_DOWN, INPUT_UP, INPUT_RIGHT};
 
 //Stage definitions
 #include "character/bf.h"
@@ -46,6 +52,7 @@ static const fixed_t note_y = FIXED_DEC(32 - SCREEN_HEIGHT2, 1);
 #include "character/mom.h"
 #include "character/xmasp.h"
 #include "character/senpai.h"
+#include "character/senpaim.h"
 #include "character/tank.h"
 #include "character/gf.h"
 #include "character/clucky.h"
@@ -66,7 +73,7 @@ static const StageDef stage_defs[StageId_Max] = {
 Stage stage;
 
 //Stage music functions
-void Stage_StartVocal(void)
+static void Stage_StartVocal(void)
 {
 	if (!(stage.flag & STAGE_FLAG_VOCAL_ACTIVE))
 	{
@@ -75,7 +82,7 @@ void Stage_StartVocal(void)
 	}
 }
 
-void Stage_CutVocal(void)
+static void Stage_CutVocal(void)
 {
 	if (stage.flag & STAGE_FLAG_VOCAL_ACTIVE)
 	{
@@ -85,7 +92,7 @@ void Stage_CutVocal(void)
 }
 
 //Stage camera functions
-void Stage_FocusCharacter(Character *ch, fixed_t div)
+static void Stage_FocusCharacter(Character *ch, fixed_t div)
 {
 	//Use character focus settings to update target position and zoom
 	stage.camera.tx = ch->x + ch->focus_x;
@@ -94,7 +101,7 @@ void Stage_FocusCharacter(Character *ch, fixed_t div)
 	stage.camera.td = div;
 }
 
-void Stage_ScrollCamera(void)
+static void Stage_ScrollCamera(void)
 {
 	#ifdef STAGE_FREECAM
 		if (pad_state.held & PAD_LEFT)
@@ -133,7 +140,7 @@ void Stage_ScrollCamera(void)
 }
 
 //Stage section functions
-void Stage_ChangeBPM(u16 bpm, u16 step)
+static void Stage_ChangeBPM(u16 bpm, u16 step)
 {
 	//Update last BPM
 	stage.last_bpm = bpm;
@@ -143,44 +150,24 @@ void Stage_ChangeBPM(u16 bpm, u16 step)
 		stage.time_base += FIXED_DIV(((fixed_t)step - stage.step_base) << FIXED_SHIFT, stage.step_crochet);
 	stage.step_base = step;
 	
-	//Get new crochet
-	fixed_t bpm_dec = ((fixed_t)bpm << FIXED_SHIFT) / 24;
-	stage.step_crochet = FIXED_DIV(bpm_dec, FIXED_DEC(125,100)); //15/12
+	//Get new crochet and times
+	stage.step_crochet = ((fixed_t)bpm << FIXED_SHIFT) * 8 / 240; //15/12/24
+	stage.step_time = FIXED_DIV(FIXED_DEC(12,1), stage.step_crochet);
 	
 	//Get new crochet based values
-	stage.note_speed = FIXED_MUL(FIXED_DIV(FIXED_DEC(140,1), stage.step_crochet), stage.speed);
-	
-	if (stage.kade)
-	{
-		stage.early_safe = stage.late_safe = stage.step_crochet / 6; //166 ms
-		stage.late_sus_safe = (stage.late_safe * 3) >> 1;
-		stage.early_sus_safe = stage.early_safe >> 1;
-	}
-	else
-	{
-		stage.late_safe = stage.step_crochet / 6; //10 frames
-		stage.early_safe = stage.late_safe >> 1;
-		stage.late_sus_safe = stage.late_safe;
-		stage.early_sus_safe = stage.early_safe;
-	}
+	stage.early_safe = stage.late_safe = stage.step_crochet / 6; //10 frames
+	stage.late_sus_safe = stage.late_safe;
+	stage.early_sus_safe = stage.early_safe * 2 / 5;
 }
 
-Section *Stage_GetPrevSection(Section *section)
+static Section *Stage_GetPrevSection(Section *section)
 {
 	if (section > stage.sections)
 		return section - 1;
 	return NULL;
 }
 
-u16 Stage_GetSectionLength(Section *section)
-{
-	Section *prev = Stage_GetPrevSection(section);
-	if (prev == NULL)
-		return section->end;
-	return section->end - prev->end;
-}
-
-u16 Stage_GetSectionStart(Section *section)
+static u16 Stage_GetSectionStart(Section *section)
 {
 	Section *prev = Stage_GetPrevSection(section);
 	if (prev == NULL)
@@ -199,7 +186,7 @@ typedef struct
 	fixed_t size; //Note height
 } SectionScroll;
 
-void Stage_GetSectionScroll(SectionScroll *scroll, Section *section)
+static void Stage_GetSectionScroll(SectionScroll *scroll, Section *section)
 {
 	//Get BPM
 	u16 bpm = section->flag & SECTION_FLAG_BPM_MASK;
@@ -223,121 +210,47 @@ static const CharAnim note_anims[4][2] = {
 	{CharAnim_Right, CharAnim_RightAlt},
 };
 
-void Stage_HitNote(u8 type, fixed_t offset)
+static u8 Stage_HitNote(PlayerState *this, u8 type, fixed_t offset)
 {
 	//Get hit type
 	if (offset < 0)
 		offset = -offset;
 	
 	u8 hit_type;
-	if (stage.kade)
-	{
-		if (offset > stage.late_safe * 81 / 100) //135ms
-			hit_type = 3; //SHIT
-		else if (offset > stage.late_safe * 54 / 100) //90ms
-			hit_type = 2; //BAD
-		else if (offset > stage.late_safe * 27 / 100) //45ms
-			hit_type = 1; //GOOD
-		else
-			hit_type = 0; //SICK
-		
-		if (hit_type == 3)
-		{
-			//Lose health and score
-			Stage_CutVocal();
-			stage.health -= 600;
-			stage.score -= 30;
-			
-			if (stage.combo)
-			{
-				//Kill combo
-				if (stage.combo > 5)
-					stage.gf->set_anim(stage.gf, CharAnim_Down); //Cry if we lost a large combo
-				stage.combo = 0;
-				
-				//Create combo object telling of our lost combo
-				Obj_Combo *combo = Obj_Combo_New(
-					stage.player->x + stage.player->focus_x,
-					stage.player->y + stage.player->focus_y,
-					3,
-					0
-				);
-				if (combo != NULL)
-					ObjectList_Add(&stage.objlist_fg, (Object*)combo);
-			}
-		}
-		else
-		{
-			//Increment combo and score
-			stage.combo++;
-			
-			static const s32 score_inc[] = {
-				 35, //SICK
-				 20, //GOOD
-				  0, //BAD
-				-30, //SHIT
-			};
-			stage.score += score_inc[hit_type];
-			stage.flag |= STAGE_FLAG_SCORE_REFRESH;
-			
-			//Restore vocals and health
-			static const s16 health_inc[] = {
-				 400, //SICK
-				   0, //GOOD
-				-300, //BAD
-				-600, //SHIT
-			};
-			Stage_StartVocal();
-			stage.health += health_inc[hit_type];
-			
-			//Create combo object telling of our combo
-			Obj_Combo *combo = Obj_Combo_New(
-				stage.player->x + stage.player->focus_x,
-				stage.player->y + stage.player->focus_y,
-				hit_type,
-				stage.combo >= 10 ? stage.combo : 0xFFFF
-			);
-			if (combo != NULL)
-				ObjectList_Add(&stage.objlist_fg, (Object*)combo);
-		}
-	}
+	if (offset > stage.late_safe * 8 / 10)
+		hit_type = 3; //SHIT
+	else if (offset > stage.late_safe * 11 / 20)
+		hit_type = 2; //BAD
+	else if (offset > stage.late_safe / 5)
+		hit_type = 1; //GOOD
 	else
-	{
-		if (offset > stage.late_safe * 9 / 10)
-			hit_type = 3; //SHIT
-		else if (offset > stage.late_safe * 3 / 4)
-			hit_type = 2; //BAD
-		else if (offset > stage.late_safe / 5)
-			hit_type = 1; //GOOD
-		else
-			hit_type = 0; //SICK
-		
-		//Increment combo and score
-		stage.combo++;
-		
-		static const s32 score_inc[] = {
-			35, //SICK
-			20, //GOOD
-			10, //BAD
-			 5, //SHIT
-		};
-		stage.score += score_inc[hit_type];
-		stage.flag |= STAGE_FLAG_SCORE_REFRESH;
-		
-		//Restore vocals and health
-		Stage_StartVocal();
-		stage.health += 230;
-		
-		//Create combo object telling of our combo
-		Obj_Combo *combo = Obj_Combo_New(
-			stage.player->x + stage.player->focus_x,
-			stage.player->y + stage.player->focus_y,
-			hit_type,
-			stage.combo >= 10 ? stage.combo : 0xFFFF
-		);
-		if (combo != NULL)
-			ObjectList_Add(&stage.objlist_fg, (Object*)combo);
-	}
+		hit_type = 0; //SICK
+	
+	//Increment combo and score
+	this->combo++;
+	
+	static const s32 score_inc[] = {
+		35, //SICK
+		20, //GOOD
+		10, //BAD
+		 5, //SHIT
+	};
+	this->score += score_inc[hit_type];
+	this->refresh_score = true;
+	
+	//Restore vocals and health
+	Stage_StartVocal();
+	this->health += 230;
+	
+	//Create combo object telling of our combo
+	Obj_Combo *combo = Obj_Combo_New(
+		this->character->focus_x,
+		this->character->focus_y,
+		hit_type,
+		this->combo >= 10 ? this->combo : 0xFFFF
+	);
+	if (combo != NULL)
+		ObjectList_Add(&stage.objlist_fg, (Object*)combo);
 	
 	//Create note splashes if SICK
 	if (hit_type == 0)
@@ -346,35 +259,31 @@ void Stage_HitNote(u8 type, fixed_t offset)
 		{
 			//Create splash object
 			Obj_Splash *splash = Obj_Splash_New(
-				note_x[type],
+				note_x[type ^ stage.note_swap],
 				note_y * (stage.downscroll ? -1 : 1),
-				type
+				type & 0x3
 			);
 			if (splash != NULL)
 				ObjectList_Add(&stage.objlist_splash, (Object*)splash);
 		}
 	}
+	
+	return hit_type;
 }
 
-void Stage_MissNote(void)
+static void Stage_MissNote(PlayerState *this)
 {
-	#ifdef STAGE_FUNKYFRIDAY
-		for (int i = 0; i < RandomRange(1, 30); i++)
-			Stage_HitNote(Random8() & 3, 0);
-		return;
-	#endif
-	
-	if (stage.combo)
+	if (this->combo)
 	{
 		//Kill combo
-		if (stage.combo > 5)
+		if (this->combo > 5)
 			stage.gf->set_anim(stage.gf, CharAnim_Down); //Cry if we lost a large combo
-		stage.combo = 0;
+		this->combo = 0;
 		
 		//Create combo object telling of our lost combo
 		Obj_Combo *combo = Obj_Combo_New(
-			stage.player->x + stage.player->focus_x,
-			stage.player->y + stage.player->focus_y,
+			this->character->focus_x,
+			this->character->focus_y,
 			0xFF,
 			0
 		);
@@ -383,7 +292,7 @@ void Stage_MissNote(void)
 	}
 }
 
-void Stage_NoteCheck(u8 type)
+static void Stage_NoteCheck(PlayerState *this, u8 type)
 {
 	//Perform note check
 	for (Note *note = stage.cur_note;; note++)
@@ -402,67 +311,126 @@ void Stage_NoteCheck(u8 type)
 			//Hit the note
 			note->type |= NOTE_FLAG_HIT;
 			
-			stage.player->set_anim(stage.player, note_anims[type][0]);
-			#ifndef STAGE_FUNKYFRIDAY
-				Stage_HitNote(type, stage.note_scroll - note_fp);
-			#else
-				for (int i = 0; i < RandomRange(1, 30); i++)
-					Stage_HitNote(type, 0);
+			this->character->set_anim(this->character, note_anims[type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0]);
+			u8 hit_type = Stage_HitNote(this, type, stage.note_scroll - note_fp);
+			this->arrow_hitan[type & 0x3] = stage.step_time;
+			
+			#ifdef PSXF_NETWORK
+				if (stage.mode >= StageMode_Net1)
+				{
+					//Send note hit packet
+					Packet note_hit;
+					note_hit[0] = PacketType_NoteHit;
+					
+					u16 note_i = note - stage.notes;
+					note_hit[1] = note_i >> 0;
+					note_hit[2] = note_i >> 8;
+					
+					note_hit[3] = this->score >> 0;
+					note_hit[4] = this->score >> 8;
+					note_hit[5] = this->score >> 16;
+					note_hit[6] = this->score >> 24;
+					
+					note_hit[7] = hit_type;
+					
+					note_hit[8] = this->combo >> 0;
+					note_hit[9] = this->combo >> 8;
+					
+					Network_Send(&note_hit);
+				}
 			#endif
-			stage.arrow_hitan[type] = 6;
 			return;
 		}
 		else
 		{
-			#ifndef STAGE_FUNKYFRIDAY
-				//Check if mine can be hit
-				fixed_t note_fp = (fixed_t)note->pos << FIXED_SHIFT;
-				if (note_fp - (stage.late_safe * 3 / 5) > stage.note_scroll)
-					break;
-				if (note_fp + (stage.late_safe * 2 / 5) < stage.note_scroll)
-					continue;
-				if ((note->type & NOTE_FLAG_HIT) || (note->type & (NOTE_FLAG_OPPONENT | 0x3)) != type || (note->type & NOTE_FLAG_SUSTAIN))
-					continue;
-				
-				//Hit the mine
-				note->type |= NOTE_FLAG_HIT;
-				
-				if (stage.stage_id == StageId_Clwn_4)
-					stage.health = -0x7000;
-				else
-					stage.health -= 2000;
-				stage.player->set_anim(stage.player, note_anims[type][1]);
-				stage.arrow_hitan[type] = 0;
+			//Check if mine can be hit
+			fixed_t note_fp = (fixed_t)note->pos << FIXED_SHIFT;
+			if (note_fp - (stage.late_safe * 3 / 5) > stage.note_scroll)
+				break;
+			if (note_fp + (stage.late_safe * 2 / 5) < stage.note_scroll)
+				continue;
+			if ((note->type & NOTE_FLAG_HIT) || (note->type & (NOTE_FLAG_OPPONENT | 0x3)) != type || (note->type & NOTE_FLAG_SUSTAIN))
+				continue;
+			
+			//Hit the mine
+			note->type |= NOTE_FLAG_HIT;
+			
+			if (stage.stage_id == StageId_Clwn_4)
+				this->health = -0x7000;
+			else
+				this->health -= 2000;
+			if (this->character->spec & CHAR_SPEC_MISSANIM)
+				this->character->set_anim(this->character, note_anims[type & 0x3][1]);
+			else
+				this->character->set_anim(this->character, note_anims[type & 0x3][0]);
+			this->arrow_hitan[type & 0x3] = -1;
+			
+			#ifdef PSXF_NETWORK
+				if (stage.mode >= StageMode_Net1)
+				{
+					//Send note hit packet
+					Packet note_hit;
+					note_hit[0] = PacketType_NoteHit;
+					
+					u16 note_i = note - stage.notes;
+					note_hit[1] = note_i >> 0;
+					note_hit[2] = note_i >> 8;
+					
+					note_hit[3] = this->score >> 0;
+					note_hit[4] = this->score >> 8;
+					note_hit[5] = this->score >> 16;
+					note_hit[6] = this->score >> 24;
+					
+					/*
+					note_hit[7] = 0xFF;
+					
+					note_hit[8] = this->combo >> 0;
+					note_hit[9] = this->combo >> 8;
+					*/
+					
+					Network_Send(&note_hit);
+				}
 			#endif
+			return;
 		}
 	}
 	
-	#ifndef STAGE_FUNKYFRIDAY
-		//Missed a note
-		if (!stage.ghost)
-		{
-			stage.player->set_anim(stage.player, note_anims[type][1]);
-			Stage_MissNote();
-			
-			stage.health -= stage.kade ? 1000 : 400;
-			stage.score -= 1;
-			stage.flag |= STAGE_FLAG_SCORE_REFRESH;
-		}
-	#else
-		//Hit a note that doesn't exist
-		stage.player->set_anim(stage.player, note_anims[type][0]);
-		for (int i = 0; i < RandomRange(1, 30); i++)
-			Stage_HitNote(type, 0);
-		stage.arrow_hitan[type] = 6;
-	#endif
+	//Missed a note
+	this->arrow_hitan[type & 0x3] = -1;
+	
+	if (!stage.ghost)
+	{
+		if (this->character->spec & CHAR_SPEC_MISSANIM)
+			this->character->set_anim(this->character, note_anims[type & 0x3][1]);
+		else
+			this->character->set_anim(this->character, note_anims[type & 0x3][0]);
+		Stage_MissNote(this);
+		
+		this->health -= 400;
+		this->score -= 1;
+		this->refresh_score = true;
+		
+		#ifdef PSXF_NETWORK
+			if (stage.mode >= StageMode_Net1)
+			{
+				//Send note hit packet
+				Packet note_hit;
+				note_hit[0] = PacketType_NoteMiss;
+				note_hit[1] = type & 0x3;
+				
+				note_hit[2] = this->score >> 0;
+				note_hit[3] = this->score >> 8;
+				note_hit[4] = this->score >> 16;
+				note_hit[5] = this->score >> 24;
+				
+				Network_Send(&note_hit);
+			}
+		#endif
+	}
 }
 
-void Stage_SustainCheck(u8 type)
+static void Stage_SustainCheck(PlayerState *this, u8 type)
 {
-	//Hold note animation
-	if (stage.arrow_hitan[type] == 0)
-		stage.arrow_hitan[type] = 1;
-	
 	//Perform note check
 	for (Note *note = stage.cur_note;; note++)
 	{
@@ -478,13 +446,139 @@ void Stage_SustainCheck(u8 type)
 		//Hit the note
 		note->type |= NOTE_FLAG_HIT;
 		
-		stage.player->set_anim(stage.player, note_anims[type][0]);
+		this->character->set_anim(this->character, note_anims[type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0]);
 		
 		Stage_StartVocal();
-		if (!stage.kade)
-			stage.health += 230;
-		stage.arrow_hitan[type] = 6;
+		this->health += 230;
+		this->arrow_hitan[type & 0x3] = stage.step_time;
+			
+		#ifdef PSXF_NETWORK
+			if (stage.mode >= StageMode_Net1)
+			{
+				//Send note hit packet
+				Packet note_hit;
+				note_hit[0] = PacketType_NoteHit;
+				
+				u16 note_i = note - stage.notes;
+				note_hit[1] = note_i >> 0;
+				note_hit[2] = note_i >> 8;
+				
+				note_hit[3] = this->score >> 0;
+				note_hit[4] = this->score >> 8;
+				note_hit[5] = this->score >> 16;
+				note_hit[6] = this->score >> 24;
+				
+				/*
+				note_hit[7] = 0xFF;
+				
+				note_hit[8] = this->combo >> 0;
+				note_hit[9] = this->combo >> 8;
+				*/
+				
+				Network_Send(&note_hit);
+			}
+		#endif
 	}
+}
+
+static void Stage_ProcessPlayer(PlayerState *this, Pad *pad, boolean playing)
+{
+	//Handle player note presses
+	#ifndef STAGE_PERFECT
+		if (playing)
+		{
+			u8 i = (this->character == stage.opponent) ? NOTE_FLAG_OPPONENT : 0;
+			
+			this->pad_held = this->character->pad_held = pad->held;
+			this->pad_press = pad->press;
+			
+			if (this->pad_held & INPUT_LEFT)
+				Stage_SustainCheck(this, 0 | i);
+			if (this->pad_held & INPUT_DOWN)
+				Stage_SustainCheck(this, 1 | i);
+			if (this->pad_held & INPUT_UP)
+				Stage_SustainCheck(this, 2 | i);
+			if (this->pad_held & INPUT_RIGHT)
+				Stage_SustainCheck(this, 3 | i);
+			
+			if (this->pad_press & INPUT_LEFT)
+				Stage_NoteCheck(this, 0 | i);
+			if (this->pad_press & INPUT_DOWN)
+				Stage_NoteCheck(this, 1 | i);
+			if (this->pad_press & INPUT_UP)
+				Stage_NoteCheck(this, 2 | i);
+			if (this->pad_press & INPUT_RIGHT)
+				Stage_NoteCheck(this, 3 | i);
+		}
+		else
+		{
+			this->pad_held = this->character->pad_held = 0;
+			this->pad_press = 0;
+		}
+	#endif
+	
+	#ifdef STAGE_PERFECT
+		//Do perfect note checks
+		if (playing)
+		{
+			u8 i = (this->character == stage.opponent) ? NOTE_FLAG_OPPONENT : 0;
+			
+			u8 hit[4] = {0, 0, 0, 0};
+			for (Note *note = stage.cur_note;; note++)
+			{
+				//Check if note can be hit
+				fixed_t note_fp = (fixed_t)note->pos << FIXED_SHIFT;
+				if (note_fp - stage.early_safe - FIXED_DEC(12,1) > stage.note_scroll)
+					break;
+				if (note_fp + stage.late_safe < stage.note_scroll)
+					continue;
+				if ((note->type & NOTE_FLAG_MINE) || (note->type & NOTE_FLAG_OPPONENT) != i)
+					continue;
+				
+				//Handle note hit
+				if (!(note->type & NOTE_FLAG_SUSTAIN))
+				{
+					if (note->type & NOTE_FLAG_HIT)
+						continue;
+					if (stage.note_scroll >= note_fp)
+						hit[note->type & 0x3] |= 1;
+					else if (!(hit[note->type & 0x3] & 8))
+						hit[note->type & 0x3] |= 2;
+				}
+				else if (!(hit[note->type & 0x3] & 2))
+				{
+					if (stage.note_scroll <= note_fp)
+						hit[note->type & 0x3] |= 4;
+					hit[note->type & 0x3] |= 8;
+				}
+			}
+			
+			//Handle input
+			this->pad_held = 0;
+			this->pad_press = 0;
+			
+			for (u8 j = 0; j < 4; j++)
+			{
+				if (hit[j] & 5)
+				{
+					this->pad_held |= note_key[j];
+					Stage_SustainCheck(this, j | i);
+				}
+				if (hit[j] & 1)
+				{
+					this->pad_press |= note_key[j];
+					Stage_NoteCheck(this, j | i);
+				}
+			}
+			
+			this->character->pad_held = this->pad_held;
+		}
+		else
+		{
+			this->pad_held = this->character->pad_held = 0;
+			this->pad_press = 0;
+		}
+	#endif
 }
 
 //Stage drawing functions
@@ -511,8 +605,8 @@ void Stage_DrawTexCol(Gfx_Tex *tex, const RECT *src, const RECT_FIXED *dst, fixe
 		hz &= FIXED_UAND;
 	}
 	
-	fixed_t l = (SCREEN_WIDTH2  << FIXED_SHIFT) + FIXED_MUL(xz, zoom);
-	fixed_t t = (SCREEN_HEIGHT2 << FIXED_SHIFT) + FIXED_MUL(yz, zoom);
+	fixed_t l = (SCREEN_WIDTH2  << FIXED_SHIFT) + FIXED_MUL(xz, zoom);// + FIXED_DEC(1,2);
+	fixed_t t = (SCREEN_HEIGHT2 << FIXED_SHIFT) + FIXED_MUL(yz, zoom);// + FIXED_DEC(1,2);
 	fixed_t r = l + FIXED_MUL(wz, zoom);
 	fixed_t b = t + FIXED_MUL(hz, zoom);
 	
@@ -553,17 +647,17 @@ void Stage_DrawTexArb(Gfx_Tex *tex, const RECT *src, const POINT_FIXED *p0, cons
 }
 
 //Stage HUD functions
-void Stage_DrawHealth(u8 i, s8 ox)
+static void Stage_DrawHealth(s16 health, u8 i, s8 ox)
 {
 	//Check if we should use 'dying' frame
 	s8 dying;
 	if (ox < 0)
-		dying = (stage.health >= 18000) * 24;
+		dying = (health >= 18000) * 24;
 	else
-		dying = (stage.health <= 2000) * 24;
+		dying = (health <= 2000) * 24;
 	
 	//Get src and dst
-	fixed_t hx = (128 << FIXED_SHIFT) * (10000 - stage.health) / 10000;
+	fixed_t hx = (128 << FIXED_SHIFT) * (10000 - health) / 10000;
 	RECT src = {
 		(i % 5) * 48 + dying,
 		16 + (i / 5) * 24,
@@ -583,8 +677,47 @@ void Stage_DrawHealth(u8 i, s8 ox)
 	Stage_DrawTex(&stage.tex_hud1, &src, &dst, FIXED_MUL(stage.bump, stage.sbump));
 }
 
-void Stage_DrawNotes(void)
+static void Stage_DrawStrum(u8 i, RECT *note_src, RECT_FIXED *note_dst)
 {
+	PlayerState *this = &stage.player_state[(i & NOTE_FLAG_OPPONENT) != 0];
+	i &= 0x3;
+	
+	if (this->arrow_hitan[i] > 0)
+	{
+		//Play hit animation
+		u8 frame = ((this->arrow_hitan[i] << 1) / stage.step_time) & 1;
+		note_src->x = (i + 1) << 5;
+		note_src->y = 64 - (frame << 5);
+		
+		this->arrow_hitan[i] -= timer_dt;
+		if (this->arrow_hitan[i] <= 0)
+		{
+			if (this->pad_held & note_key[i])
+				this->arrow_hitan[i] = 1;
+			else
+				this->arrow_hitan[i] = 0;
+		}
+	}
+	else if (this->arrow_hitan[i] < 0)
+	{
+		//Play depress animation
+		note_src->x = (i + 1) << 5;
+		note_src->y = 96;
+		if (!(this->pad_held & note_key[i]))
+			this->arrow_hitan[i] = 0;
+	}
+	else
+	{
+		note_src->x = 0;
+		note_src->y = i << 5;
+	}
+}
+
+static void Stage_DrawNotes(void)
+{
+	//Check if opponent should draw as bot
+	u8 bot = (stage.mode >= StageMode_2P) ? 0 : NOTE_FLAG_OPPONENT;
+	
 	//Initialize scroll state
 	SectionScroll scroll;
 	scroll.start = stage.time_base;
@@ -617,7 +750,10 @@ void Stage_DrawNotes(void)
 			Stage_GetSectionScroll(&scroll, ++scroll_section);
 		}
 		
-		//Get note position
+		//Get note information
+		u8 i = (note->type & NOTE_FLAG_OPPONENT) != 0;
+		PlayerState *this = &stage.player_state[i];
+		
 		fixed_t note_fp = (fixed_t)note->pos << FIXED_SHIFT;
 		fixed_t time = (scroll.start - stage.song_time) + (scroll.length * (note->pos - scroll.start_step) / scroll.length_step);
 		fixed_t y = note_y + FIXED_MUL(stage.speed, time * 150);
@@ -626,42 +762,36 @@ void Stage_DrawNotes(void)
 		if (y < FIXED_DEC(-16 - SCREEN_HEIGHT2, 1))
 		{
 			//Wait for note to exit late time
-			if (note->type & NOTE_FLAG_SUSTAIN)
-			{
-				if (note_fp + stage.late_sus_safe >= stage.note_scroll)
-					continue;
-			}
-			else
-			{
-				if (note_fp + stage.late_safe >= stage.note_scroll)
-					continue;
-			}
+			if (note_fp + stage.late_safe >= stage.note_scroll)
+				continue;
 			
 			//Miss note if player's note
-			if (!(note->type & (NOTE_FLAG_OPPONENT | NOTE_FLAG_HIT | NOTE_FLAG_MINE)))
+			if (!(note->type & (bot | NOTE_FLAG_HIT | NOTE_FLAG_MINE)))
 			{
-				if (stage.kade)
-				{
-					if (!(note->type & NOTE_FLAG_SUSTAIN))
-					{
-						//Missed note
-						Stage_CutVocal();
-						Stage_MissNote();
-						stage.health -= (note->type & NOTE_FLAG_SUSTAIN_END) ? 2000 : 1000;
-						stage.score -= 1;
-					}
-					else
-					{
-						//Missed sustain piece
-						Stage_CutVocal();
-					}
-				}
-				else
+				if (stage.mode < StageMode_Net1 || i == ((stage.mode == StageMode_Net1) ? 0 : 1))
 				{
 					//Missed note
 					Stage_CutVocal();
-					Stage_MissNote();
-					stage.health -= 475;
+					Stage_MissNote(this);
+					this->health -= 475;
+					
+					//Send miss packet
+					#ifdef PSXF_NETWORK
+						if (stage.mode >= StageMode_Net1)
+						{
+							//Send note hit packet
+							Packet note_hit;
+							note_hit[0] = PacketType_NoteMiss;
+							note_hit[1] = 0xFF;
+							
+							note_hit[2] = this->score >> 0;
+							note_hit[3] = this->score >> 8;
+							note_hit[4] = this->score >> 16;
+							note_hit[5] = this->score >> 24;
+							
+							Network_Send(&note_hit);
+						}
+					#endif
 				}
 			}
 			
@@ -682,7 +812,7 @@ void Stage_DrawNotes(void)
 				//Check for sustain clipping
 				fixed_t clip;
 				y -= scroll.size;
-				if ((note->type & (NOTE_FLAG_OPPONENT | NOTE_FLAG_HIT)) || ((stage.pad_held & note_key[note->type & 0x3]) && (note_fp + stage.late_sus_safe >= stage.note_scroll)))
+				if ((note->type & (bot | NOTE_FLAG_HIT)) || ((this->pad_held & note_key[note->type & 0x3]) && (note_fp + stage.late_sus_safe >= stage.note_scroll)))
 				{
 					clip = FIXED_DEC(32 - SCREEN_HEIGHT2, 1) - y;
 					if (clip < 0)
@@ -703,7 +833,7 @@ void Stage_DrawNotes(void)
 						note_src.w = 32;
 						note_src.h = 28 - (clip >> FIXED_SHIFT);
 						
-						note_dst.x = note_x[note->type & 0x7] - FIXED_DEC(16,1);
+						note_dst.x = note_x[(note->type & 0x7) ^ stage.note_swap] - FIXED_DEC(16,1);
 						note_dst.y = y + clip;
 						note_dst.w = note_src.w << FIXED_SHIFT;
 						note_dst.h = (note_src.h << FIXED_SHIFT);
@@ -725,7 +855,7 @@ void Stage_DrawNotes(void)
 						note_src.w = 32;
 						note_src.h = 16;
 						
-						note_dst.x = note_x[note->type & 0x7] - FIXED_DEC(16,1);
+						note_dst.x = note_x[(note->type & 0x7) ^ stage.note_swap] - FIXED_DEC(16,1);
 						note_dst.y = y + clip;
 						note_dst.w = note_src.w << FIXED_SHIFT;
 						note_dst.h = scroll.size - clip;
@@ -738,10 +868,6 @@ void Stage_DrawNotes(void)
 			}
 			else if (note->type & NOTE_FLAG_MINE)
 			{
-				#ifdef STAGE_FUNKYFRIDAY
-				if (1)
-					continue;
-				#endif
 				//Don't draw if already hit
 				if (note->type & NOTE_FLAG_HIT)
 					continue;
@@ -752,7 +878,7 @@ void Stage_DrawNotes(void)
 				note_src.w = 32;
 				note_src.h = 32;
 				
-				note_dst.x = note_x[note->type & 0x7] - FIXED_DEC(16,1);
+				note_dst.x = note_x[(note->type & 0x7) ^ stage.note_swap] - FIXED_DEC(16,1);
 				note_dst.y = y - FIXED_DEC(16,1);
 				note_dst.w = note_src.w << FIXED_SHIFT;
 				note_dst.h = note_src.h << FIXED_SHIFT;
@@ -806,7 +932,7 @@ void Stage_DrawNotes(void)
 				note_src.w = 32;
 				note_src.h = 32;
 				
-				note_dst.x = note_x[note->type & 0x7] - FIXED_DEC(16,1);
+				note_dst.x = note_x[(note->type & 0x7) ^ stage.note_swap] - FIXED_DEC(16,1);
 				note_dst.y = y - FIXED_DEC(16,1);
 				note_dst.w = note_src.w << FIXED_SHIFT;
 				note_dst.h = note_src.h << FIXED_SHIFT;
@@ -820,28 +946,38 @@ void Stage_DrawNotes(void)
 }
 
 //Stage loads
-void Stage_LoadPlayer(void)
+static void Stage_SwapChars(void)
+{
+	if (stage.mode == StageMode_Swap)
+	{
+		Character *temp = stage.player;
+		stage.player = stage.opponent;
+		stage.opponent = temp;
+	}
+}
+
+static void Stage_LoadPlayer(void)
 {
 	//Load player character
 	Character_Free(stage.player);
 	stage.player = stage.stage_def->pchar.new(stage.stage_def->pchar.x, stage.stage_def->pchar.y);
 }
 
-void Stage_LoadOpponent(void)
+static void Stage_LoadOpponent(void)
 {
 	//Load opponent character
 	Character_Free(stage.opponent);
 	stage.opponent = stage.stage_def->ochar.new(stage.stage_def->ochar.x, stage.stage_def->ochar.y);
 }
 
-void Stage_LoadGirlfriend(void)
+static void Stage_LoadGirlfriend(void)
 {
 	//Load girlfriend character
 	Character_Free(stage.gf);
 	stage.gf = stage.stage_def->gchar.new(stage.stage_def->gchar.x, stage.stage_def->gchar.y);
 }
 
-void Stage_LoadStage(void)
+static void Stage_LoadStage(void)
 {
 	//Load back
 	if (stage.back != NULL)
@@ -849,7 +985,7 @@ void Stage_LoadStage(void)
 	stage.back = stage.stage_def->back();
 }
 
-void Stage_LoadChart(void)
+static void Stage_LoadChart(void)
 {
 	//Load stage data
 	char chart_path[64];
@@ -895,6 +1031,11 @@ void Stage_LoadChart(void)
 				break;
 		}
 		
+		if (notes)
+			stage.num_notes = notes - 1;
+		else
+			stage.num_notes = 0;
+		
 		//Realloc for separate structs
 		size_t sections_size = sections * sizeof(Section);
 		size_t notes_size = notes * sizeof(Note);
@@ -925,7 +1066,40 @@ void Stage_LoadChart(void)
 		//Directly use section and notes pointers
 		stage.sections = (Section*)(chart_byte + 2);
 		stage.notes = (Note*)(chart_byte + *((u16*)stage.chart_data));
+		
+		for (Note *note = stage.notes; note->pos != 0xFFFF; note++)
+			stage.num_notes++;
 	#endif
+	
+	//Swap chart
+	if (stage.mode == StageMode_Swap)
+	{
+		for (Note *note = stage.notes; note->pos != 0xFFFF; note++)
+			note->type ^= NOTE_FLAG_OPPONENT;
+		for (Section *section = stage.sections;; section++)
+		{
+			section->flag ^= SECTION_FLAG_OPPFOCUS;
+			if (section->end == 0xFFFF)
+				break;
+		}
+	}
+	
+	//Count max scores
+	stage.player_state[0].max_score = 0;
+	stage.player_state[1].max_score = 0;
+	for (Note *note = stage.notes; note->pos != 0xFFFF; note++)
+	{
+		if (note->type & (NOTE_FLAG_SUSTAIN | NOTE_FLAG_MINE))
+			continue;
+		if (note->type & NOTE_FLAG_OPPONENT)
+			stage.player_state[1].max_score += 35;
+		else
+			stage.player_state[0].max_score += 35;
+	}
+	if (stage.mode >= StageMode_2P && stage.player_state[1].max_score > stage.player_state[0].max_score)
+		stage.max_score = stage.player_state[1].max_score;
+	else
+		stage.max_score = stage.player_state[0].max_score;
 	
 	stage.cur_section = stage.sections;
 	stage.cur_note = stage.notes;
@@ -939,7 +1113,7 @@ void Stage_LoadChart(void)
 	Stage_ChangeBPM(stage.cur_section->flag & SECTION_FLAG_BPM_MASK, 0);
 }
 
-void Stage_LoadMusic(void)
+static void Stage_LoadMusic(void)
 {
 	//Offset sing ends
 	stage.player->sing_end -= stage.note_scroll;
@@ -960,19 +1134,30 @@ void Stage_LoadMusic(void)
 	stage.opponent->sing_end += stage.note_scroll;
 }
 
-void Stage_LoadState(void)
+static void Stage_LoadState(void)
 {
 	//Initialize stage state
-	stage.flag = 0;
+	stage.flag = STAGE_FLAG_VOCAL_ACTIVE;
 	
 	stage.gf_speed = 1 << 2;
 	
-	stage.health = 10000;
-	stage.combo = 0;
-	stage.score = 0;
-	strcpy(stage.score_text, "0");
-	
 	stage.state = StageState_Play;
+	
+	stage.player_state[0].character = stage.player;
+	stage.player_state[1].character = stage.opponent;
+	for (int i = 0; i < 2; i++)
+	{
+		memset(stage.player_state[i].arrow_hitan, 0, sizeof(stage.player_state[i].arrow_hitan));
+		
+		stage.player_state[i].health = 10000;
+		stage.player_state[i].combo = 0;
+		
+		stage.player_state[i].refresh_score = false;
+		stage.player_state[i].score = 0;
+		strcpy(stage.player_state[i].score_text, "0");
+		
+		stage.player_state[i].pad_held = stage.player_state[i].pad_press = 0;
+	}
 	
 	ObjectList_Free(&stage.objlist_splash);
 	ObjectList_Free(&stage.objlist_fg);
@@ -988,7 +1173,10 @@ void Stage_Load(StageId id, StageDiff difficulty, boolean story)
 	stage.story = story;
 	
 	//Load HUD textures
-	Gfx_LoadTex(&stage.tex_hud0, IO_Read("\\STAGE\\HUD0.TIM;1"), GFX_LOADTEX_FREE);
+	if (id >= StageId_6_1 && id <= StageId_6_3)
+		Gfx_LoadTex(&stage.tex_hud0, IO_Read("\\STAGE\\HUD0WEEB.TIM;1"), GFX_LOADTEX_FREE);
+	else
+		Gfx_LoadTex(&stage.tex_hud0, IO_Read("\\STAGE\\HUD0.TIM;1"), GFX_LOADTEX_FREE);
 	Gfx_LoadTex(&stage.tex_hud1, IO_Read("\\STAGE\\HUD1.TIM;1"), GFX_LOADTEX_FREE);
 	
 	//Load stage background
@@ -998,16 +1186,13 @@ void Stage_Load(StageId id, StageDiff difficulty, boolean story)
 	Stage_LoadPlayer();
 	Stage_LoadOpponent();
 	Stage_LoadGirlfriend();
+	Stage_SwapChars();
 	
 	//Load stage chart
 	Stage_LoadChart();
 	
 	//Initialize stage state
 	stage.story = story;
-	stage.flag = 0;
-	
-	stage.pad_held = stage.pad_press = 0;
-	memset(stage.arrow_hitan, 0, sizeof(stage.arrow_hitan));
 	
 	Stage_LoadState();
 	
@@ -1023,15 +1208,39 @@ void Stage_Load(StageId id, StageDiff difficulty, boolean story)
 	stage.bump = FIXED_UNIT;
 	stage.sbump = FIXED_UNIT;
 	
+	//Initialize stage according to mode
+	stage.note_swap = (stage.mode == StageMode_Swap) ? 4 : 0;
+	
 	//Load music
 	Stage_LoadMusic();
 	
 	//Test offset
-	stage.offset = 0;
+	#ifdef PSXF_PC
+		stage.offset = -20;
+	#else
+		stage.offset = 0;
+	#endif
+	
+	#ifdef PSXF_NETWORK
+	if (Network_IsHost() && stage.mode >= StageMode_Net1)
+	{
+		//Send ready packet to peer
+		Packet ready;
+		ready[0] = PacketType_Ready;
+		ready[1] = id;
+		ready[2] = difficulty;
+		ready[3] = (stage.mode == StageMode_Net1) ? 1 : 0;
+		Network_Send(&ready);
+	}
+	#endif
 }
 
 void Stage_Unload(void)
 {
+	//Disable net mode to not break the game
+	if (stage.mode >= StageMode_Net1)
+		stage.mode = StageMode_Normal;
+	
 	//Unload stage background
 	if (stage.back != NULL)
 		stage.back->free(stage.back);
@@ -1055,7 +1264,7 @@ void Stage_Unload(void)
 	stage.gf = NULL;
 }
 
-boolean Stage_NextLoad(void)
+static boolean Stage_NextLoad(void)
 {
 	u8 load = stage.stage_def->next_load;
 	if (load == 0)
@@ -1075,6 +1284,7 @@ boolean Stage_NextLoad(void)
 			Stage_LoadStage();
 		
 		//Load characters
+		Stage_SwapChars();
 		if (load & STAGE_LOAD_PLAYER)
 		{
 			Stage_LoadPlayer();
@@ -1093,6 +1303,7 @@ boolean Stage_NextLoad(void)
 			stage.opponent->x = stage.stage_def->ochar.x;
 			stage.opponent->y = stage.stage_def->ochar.y;
 		}
+		Stage_SwapChars();
 		if (load & STAGE_LOAD_GIRLFRIEND)
 		{
 			Stage_LoadGirlfriend();
@@ -1123,11 +1334,25 @@ void Stage_Tick(void)
 	SeamLoad:;
 	
 	//Tick transition
-	if (pad_state.press & PAD_START)
+	#ifdef PSXF_NETWORK
+	if (stage.mode >= StageMode_Net1)
 	{
-		//Return to menu
-		stage.trans = (stage.state == StageState_Play) ? StageTrans_Menu : StageTrans_Reload;
-		Trans_Start();
+		//Show disconnect screen when disconnected
+		if (!(Network_Connected() && Network_HasPeer()))
+		{
+			stage.trans = StageTrans_Disconnect;
+			Trans_Start();
+		}
+	}
+	else
+	#endif
+	{
+		//Return to menu when start is pressed
+		if (pad_state.press & PAD_START)
+		{
+			stage.trans = (stage.state == StageState_Play) ? StageTrans_Menu : StageTrans_Reload;
+			Trans_Start();
+		}
 	}
 	
 	if (Trans_Tick())
@@ -1139,16 +1364,28 @@ void Stage_Tick(void)
 				Stage_Unload();
 				
 				LoadScr_Start();
-				if (stage.stage_id <= StageId_LastVanilla)
+				#ifdef PSXF_NETWORK
+				if (Network_Connected())
 				{
-					if (stage.story)
-						Menu_Load(MenuPage_Story);
+					if (Network_IsHost())
+						Menu_Load(MenuPage_NetOp);
 					else
-						Menu_Load(MenuPage_Freeplay);
+						Menu_Load(MenuPage_NetLobby);
 				}
 				else
+				#endif
 				{
-					Menu_Load(MenuPage_Mods);
+					if (stage.stage_id <= StageId_LastVanilla)
+					{
+						if (stage.story)
+							Menu_Load(MenuPage_Story);
+						else
+							Menu_Load(MenuPage_Freeplay);
+					}
+					else
+					{
+						Menu_Load(MenuPage_Mods);
+					}
 				}
 				LoadScr_End();
 				
@@ -1170,6 +1407,21 @@ void Stage_Tick(void)
 				Stage_Load(stage.stage_id, stage.stage_diff, stage.story);
 				LoadScr_End();
 				break;
+		#ifdef PSXF_NETWORK
+			case StageTrans_Disconnect:
+				//Disconnect screen
+				Stage_Unload();
+				
+				LoadScr_Start();
+				if (Network_Connected() && Network_IsHost())
+					Menu_Load(MenuPage_NetOpWait);
+				else
+					Menu_Load(MenuPage_NetFail);
+				LoadScr_End();
+				
+				gameloop = GameLoop_Menu;
+				return;
+		#endif
 		}
 	}
 	
@@ -1184,104 +1436,121 @@ void Stage_Tick(void)
 			boolean playing;
 			fixed_t next_scroll;
 			
-			const fixed_t interp_int = FIXED_UNIT * 8 / 75;
-			if (stage.note_scroll < 0)
+			#ifdef PSXF_NETWORK
+			if (!Network_IsReady())
 			{
-				//Play countdown sequence
-				stage.song_time += timer_dt;
-				
-				//Update song
-				if (stage.song_time >= 0)
+				if (!Network_IsHost())
 				{
-					//Song has started
-					playing = true;
-					Audio_PlayXA_Track(stage.stage_def->music_track, 0x40, stage.stage_def->music_channel, 0);
-					
-					//Update song time
-					fixed_t audio_time = (fixed_t)Audio_TellXA_Milli() - stage.offset;
-					if (audio_time < 0)
-						audio_time = 0;
-					stage.interp_ms = (audio_time << FIXED_SHIFT) / 1000;
-					stage.interp_time = 0;
-					stage.song_time = stage.interp_ms;
+					//Send ready packet
+					Packet ready;
+					ready[0] = PacketType_Ready;
+					Network_Send(&ready);
+					Network_SetReady(true);
 				}
-				else
-				{
-					//Still scrolling
-					playing = false;
-				}
-				
-				//Update scroll
-				next_scroll = FIXED_MUL(stage.song_time, stage.step_crochet);
+				next_scroll = stage.note_scroll;
 			}
-			else if (Audio_PlayingXA())
+			else
+			#endif
 			{
-				fixed_t audio_time_pof = (fixed_t)Audio_TellXA_Milli();
-				fixed_t audio_time = (audio_time_pof > 0) ? (audio_time_pof - stage.offset) : 0;
-				
-				if (stage.expsync)
+				const fixed_t interp_int = FIXED_UNIT * 8 / 75;
+				if (stage.note_scroll < 0)
 				{
-					//Get playing song position
-					if (audio_time_pof > 0)
-					{
-						stage.song_time += timer_dt;
-						stage.interp_time += timer_dt;
-					}
+					//Play countdown sequence
+					stage.song_time += timer_dt;
 					
-					if (stage.interp_time >= interp_int)
+					//Update song
+					if (stage.song_time >= 0)
 					{
-						//Update interp state
-						while (stage.interp_time >= interp_int)
-							stage.interp_time -= interp_int;
+						//Song has started
+						playing = true;
+						Audio_PlayXA_Track(stage.stage_def->music_track, 0x40, stage.stage_def->music_channel, 0);
+						
+						//Update song time
+						fixed_t audio_time = (fixed_t)Audio_TellXA_Milli() - stage.offset;
+						if (audio_time < 0)
+							audio_time = 0;
 						stage.interp_ms = (audio_time << FIXED_SHIFT) / 1000;
-					}
-					
-					//Resync
-					fixed_t next_time = stage.interp_ms + stage.interp_time;
-					if (stage.song_time >= next_time + FIXED_DEC(25,1000) || stage.song_time <= next_time - FIXED_DEC(25,1000))
-					{
-						stage.song_time = next_time;
+						stage.interp_time = 0;
+						stage.song_time = stage.interp_ms;
 					}
 					else
 					{
-						if (stage.song_time < next_time - FIXED_DEC(1,1000))
-							stage.song_time += FIXED_DEC(1,1000);
-						if (stage.song_time > next_time + FIXED_DEC(1,1000))
-							stage.song_time -= FIXED_DEC(1,1000);
+						//Still scrolling
+						playing = false;
 					}
+					
+					//Update scroll
+					next_scroll = FIXED_MUL(stage.song_time, stage.step_crochet);
+				}
+				else if (Audio_PlayingXA())
+				{
+					fixed_t audio_time_pof = (fixed_t)Audio_TellXA_Milli();
+					fixed_t audio_time = (audio_time_pof > 0) ? (audio_time_pof - stage.offset) : 0;
+					
+					if (stage.expsync)
+					{
+						//Get playing song position
+						if (audio_time_pof > 0)
+						{
+							stage.song_time += timer_dt;
+							stage.interp_time += timer_dt;
+						}
+						
+						if (stage.interp_time >= interp_int)
+						{
+							//Update interp state
+							while (stage.interp_time >= interp_int)
+								stage.interp_time -= interp_int;
+							stage.interp_ms = (audio_time << FIXED_SHIFT) / 1000;
+						}
+						
+						//Resync
+						fixed_t next_time = stage.interp_ms + stage.interp_time;
+						if (stage.song_time >= next_time + FIXED_DEC(25,1000) || stage.song_time <= next_time - FIXED_DEC(25,1000))
+						{
+							stage.song_time = next_time;
+						}
+						else
+						{
+							if (stage.song_time < next_time - FIXED_DEC(1,1000))
+								stage.song_time += FIXED_DEC(1,1000);
+							if (stage.song_time > next_time + FIXED_DEC(1,1000))
+								stage.song_time -= FIXED_DEC(1,1000);
+						}
+					}
+					else
+					{
+						//Old sync
+						stage.interp_ms = (audio_time << FIXED_SHIFT) / 1000;
+						stage.interp_time = 0;
+						stage.song_time = stage.interp_ms;
+					}
+					
+					playing = true;
+					
+					//Update scroll
+					next_scroll = ((fixed_t)stage.step_base << FIXED_SHIFT) + FIXED_MUL(stage.song_time - stage.time_base, stage.step_crochet);
 				}
 				else
 				{
-					//Old sync
-					stage.interp_ms = (audio_time << FIXED_SHIFT) / 1000;
-					stage.interp_time = 0;
-					stage.song_time = stage.interp_ms;
-				}
-				
-				playing = true;
-				
-				//Update scroll
-				next_scroll = ((fixed_t)stage.step_base << FIXED_SHIFT) + FIXED_MUL(stage.song_time - stage.time_base, stage.step_crochet);
-			}
-			else
-			{
-				//Song has ended
-				playing = false;
-				stage.song_time += timer_dt;
-				
-				//Update scroll
-				next_scroll = ((fixed_t)stage.step_base << FIXED_SHIFT) + FIXED_MUL(stage.song_time - stage.time_base, stage.step_crochet);
-				
-				//Transition to menu or next song
-				if (stage.story && stage.stage_def->next_stage != stage.stage_id)
-				{
-					if (Stage_NextLoad())
-						goto SeamLoad;
-				}
-				else
-				{
-					stage.trans = StageTrans_Menu;
-					Trans_Start();
+					//Song has ended
+					playing = false;
+					stage.song_time += timer_dt;
+					
+					//Update scroll
+					next_scroll = ((fixed_t)stage.step_base << FIXED_SHIFT) + FIXED_MUL(stage.song_time - stage.time_base, stage.step_crochet);
+					
+					//Transition to menu or next song
+					if (stage.story && stage.stage_def->next_stage != stage.stage_id)
+					{
+						if (Stage_NextLoad())
+							goto SeamLoad;
+					}
+					else
+					{
+						stage.trans = StageTrans_Menu;
+						Trans_Start();
+					}
 				}
 			}
 			
@@ -1348,148 +1617,63 @@ void Stage_Tick(void)
 				Stage_FocusCharacter(stage.player, FIXED_UNIT / 24);
 			Stage_ScrollCamera();
 			
-			//Handle player note presses
-			#ifndef STAGE_PERFECT
-				if (playing)
-				{
-					stage.pad_held = pad_state.held;
-					stage.pad_press = pad_state.press;
-					
-					if (pad_state.press & INPUT_LEFT)
-						Stage_NoteCheck(0);
-					if (pad_state.press & INPUT_DOWN)
-						Stage_NoteCheck(1);
-					if (pad_state.press & INPUT_UP)
-						Stage_NoteCheck(2);
-					if (pad_state.press & INPUT_RIGHT)
-						Stage_NoteCheck(3);
-					
-					if (pad_state.held & INPUT_LEFT)
-						Stage_SustainCheck(0);
-					if (pad_state.held & INPUT_DOWN)
-						Stage_SustainCheck(1);
-					if (pad_state.held & INPUT_UP)
-						Stage_SustainCheck(2);
-					if (pad_state.held & INPUT_RIGHT)
-						Stage_SustainCheck(3);
-				}
-				else
-				{
-					stage.pad_held = 0;
-					stage.pad_press = 0;
-				}
-			#endif
-			
-			//Process notes
-			for (Note *note = stage.cur_note;; note++)
+			switch (stage.mode)
 			{
-				if (note->pos > (stage.note_scroll >> FIXED_SHIFT))
-					break;
-				
-				//Opponent note hits
-				if (playing && (note->type & NOTE_FLAG_OPPONENT) && !(note->type & NOTE_FLAG_HIT))
+				case StageMode_Normal:
+				case StageMode_Swap:
 				{
-					//Opponent hits note
-					Stage_StartVocal();
-					stage.opponent->set_anim(stage.opponent, note_anims[note->type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0]);
-					note->type |= NOTE_FLAG_HIT;
-				}
-			}
-			
-			#ifdef STAGE_PERFECT
-				//Do perfect note checks
-				if (playing)
-				{
-					u8 hit[4] = {0, 0, 0, 0};
+					//Handle player 1 inputs
+					Stage_ProcessPlayer(&stage.player_state[0], &pad_state, playing);
+					
+					//Handle opponent notes
+					u8 opponent_anote = CharAnim_Idle;
+					u8 opponent_snote = CharAnim_Idle;
+					
 					for (Note *note = stage.cur_note;; note++)
 					{
-						//Check if note can be hit
-						fixed_t note_fp = (fixed_t)note->pos << FIXED_SHIFT;
-						if (note_fp - stage.early_safe - FIXED_DEC(12,1) > stage.note_scroll)
+						if (note->pos > (stage.note_scroll >> FIXED_SHIFT))
 							break;
-						if (note_fp + stage.late_safe < stage.note_scroll)	
-							continue;
-						if (note->type & (NOTE_FLAG_OPPONENT | NOTE_FLAG_MINE))
-							continue;
 						
-						//Handle note hit
-						if (!(note->type & NOTE_FLAG_SUSTAIN))
+						//Opponent note hits
+						if (playing && (note->type & NOTE_FLAG_OPPONENT) && !(note->type & NOTE_FLAG_HIT))
 						{
-							if (note->type & NOTE_FLAG_HIT)
-								continue;
-							if (stage.note_scroll >= note_fp)
-								hit[note->type & 0x3] |= 1;
-							else if (!(hit[note->type & 0x3] & 8))
-								hit[note->type & 0x3] |= 2;
-						}
-						else if (!(hit[note->type & 0x3] & 2))
-						{
-							if (stage.note_scroll <= note_fp)
-								hit[note->type & 0x3] |= 4;
-							hit[note->type & 0x3] |= 8;
+							//Opponent hits note
+							Stage_StartVocal();
+							if (note->type & NOTE_FLAG_SUSTAIN)
+								opponent_snote = note_anims[note->type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0];
+							else
+								opponent_anote = note_anims[note->type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0];
+							note->type |= NOTE_FLAG_HIT;
 						}
 					}
 					
-					//Handle input
-					stage.pad_held = 0;
-					stage.pad_press = 0;
-					
-					for (u8 i = 0; i < 4; i++)
-					{
-						if (hit[i] & 1)
-						{
-							stage.pad_press |= note_key[i];
-							Stage_NoteCheck(i);
-						}
-						if (hit[i] & 5)
-						{
-							stage.pad_held |= note_key[i];
-							Stage_SustainCheck(i);
-						}
-					}
+					if (opponent_anote != CharAnim_Idle)
+						stage.opponent->set_anim(stage.opponent, opponent_anote);
+					else if (opponent_snote != CharAnim_Idle)
+						stage.opponent->set_anim(stage.opponent, opponent_snote);
+					break;
+				}
+				case StageMode_2P:
+				{
+					//Handle player 1 and 2 inputs
+					Stage_ProcessPlayer(&stage.player_state[0], &pad_state, playing);
+					Stage_ProcessPlayer(&stage.player_state[1], &pad_state_2, playing);
+					break;
+				}
+			#ifdef PSXF_NETWORK
+				case StageMode_Net1:
+				{
+					//Handle player 1 inputs
+					Stage_ProcessPlayer(&stage.player_state[0], &pad_state, playing);
+					break;
+				}
+				case StageMode_Net2:
+				{
+					//Handle player 2 inputs
+					Stage_ProcessPlayer(&stage.player_state[1], &pad_state, playing);
+					break;
 				}
 			#endif
-			
-			//Display score
-			RECT score_src = {80, 224, 40, 10};
-			RECT_FIXED score_dst = {FIXED_DEC(14,1), (SCREEN_HEIGHT2 - 42) << FIXED_SHIFT, FIXED_DEC(40,1), FIXED_DEC(10,1)};
-			if (stage.downscroll)
-				score_dst.y = -score_dst.y - score_dst.h;
-			
-			Stage_DrawTex(&stage.tex_hud0, &score_src, &score_dst, stage.bump);
-			
-			//Get string representing number
-			if (stage.flag & STAGE_FLAG_SCORE_REFRESH)
-			{
-				if (stage.score != 0)
-					sprintf(stage.score_text, "%d0", stage.score);
-				else
-					strcpy(stage.score_text, "0");
-			}
-			
-			//Draw number
-			score_src.y = 240;
-			score_src.w = 8;
-			score_dst.x += FIXED_DEC(40,1);
-			score_dst.w = FIXED_DEC(8,1);
-			
-			for (const char *p = stage.score_text; ; p++)
-			{
-				//Get character
-				char c = *p;
-				if (c == '\0')
-					break;
-				
-				//Draw character
-				if (c == '-')
-					score_src.x = 160;
-				else //Should be a number
-					score_src.x = 80 + ((c - '0') << 3);
-				
-				Stage_DrawTex(&stage.tex_hud0, &score_src, &score_dst, stage.bump);
-				
-				//Move character right
-				score_dst.x += FIXED_DEC(7,1);
 			}
 			
 			//Tick note splashes
@@ -1507,55 +1691,92 @@ void Stage_Tick(void)
 			for (u8 i = 0; i < 4; i++)
 			{
 				//BF
-				note_dst.x = note_x[i] - FIXED_DEC(16,1);
-				
-				if (stage.arrow_hitan[i] != 0)
-				{
-					//Play hit animation
-					note_src.x = (i + 1) << 5;
-					note_src.y = 128 - (((stage.arrow_hitan[i] + 1) >> 1) << 5);
-					stage.arrow_hitan[i]--;
-				}
-				else
-				{
-					note_src.x = 0;
-					note_src.y = i << 5;
-				}
+				note_dst.x = note_x[i ^ stage.note_swap] - FIXED_DEC(16,1);
+				Stage_DrawStrum(i, &note_src, &note_dst);
 				Stage_DrawTex(&stage.tex_hud0, &note_src, &note_dst, stage.bump);
 				
 				//Opponent
-				note_dst.x = note_x[i | 0x4] - FIXED_DEC(16,1);
-				
-				note_src.x = 0;
-				note_src.y = i << 5;
+				note_dst.x = note_x[(i | 0x4) ^ stage.note_swap] - FIXED_DEC(16,1);
+				Stage_DrawStrum(i | 4, &note_src, &note_dst);
 				Stage_DrawTex(&stage.tex_hud0, &note_src, &note_dst, stage.bump);
 			}
 			
-			//Perform health checks
-			if (stage.health <= 0)
+			//Draw score
+			for (int i = 0; i < ((stage.mode >= StageMode_2P) ? 2 : 1); i++)
 			{
-				//Player has died
-				stage.health = 0;
-				stage.state = StageState_Dead;
+				PlayerState *this = &stage.player_state[i];
+				
+				//Get string representing number
+				if (this->refresh_score)
+				{
+					if (this->score != 0)
+						sprintf(this->score_text, "%d0", this->score * stage.max_score / this->max_score);
+					else
+						strcpy(this->score_text, "0");
+				}
+				
+				//Display score
+				RECT score_src = {80, 224, 40, 10};
+				RECT_FIXED score_dst = {(i ^ (stage.mode == StageMode_Swap)) ? FIXED_DEC(-100,1) : FIXED_DEC(14,1), (SCREEN_HEIGHT2 - 42) << FIXED_SHIFT, FIXED_DEC(40,1), FIXED_DEC(10,1)};
+				if (stage.downscroll)
+					score_dst.y = -score_dst.y - score_dst.h;
+				
+				Stage_DrawTex(&stage.tex_hud0, &score_src, &score_dst, stage.bump);
+				
+				//Draw number
+				score_src.y = 240;
+				score_src.w = 8;
+				score_dst.x += FIXED_DEC(40,1);
+				score_dst.w = FIXED_DEC(8,1);
+				
+				for (const char *p = this->score_text; ; p++)
+				{
+					//Get character
+					char c = *p;
+					if (c == '\0')
+						break;
+					
+					//Draw character
+					if (c == '-')
+						score_src.x = 160;
+					else //Should be a number
+						score_src.x = 80 + ((c - '0') << 3);
+					
+					Stage_DrawTex(&stage.tex_hud0, &score_src, &score_dst, stage.bump);
+					
+					//Move character right
+					score_dst.x += FIXED_DEC(7,1);
+				}
 			}
-			if (stage.health > 20000)
-				stage.health = 20000;
 			
-			//Draw health heads
-			Stage_DrawHealth(stage.player->health_i,    1);
-			Stage_DrawHealth(stage.opponent->health_i, -1);
-			
-			//Draw health bar
-			RECT health_fill = {0, 0, 256 - (256 * stage.health / 20000), 8};
-			RECT health_back = {0, 8, 256, 8};
-			RECT_FIXED health_dst = {FIXED_DEC(-128,1), (SCREEN_HEIGHT2 - 32) << FIXED_SHIFT, 0, FIXED_DEC(8,1)};
-			if (stage.downscroll)
-				health_dst.y = -health_dst.y - health_dst.h;
-			
-			health_dst.w = health_fill.w << FIXED_SHIFT;
-			Stage_DrawTex(&stage.tex_hud1, &health_fill, &health_dst, stage.bump);
-			health_dst.w = health_back.w << FIXED_SHIFT;
-			Stage_DrawTex(&stage.tex_hud1, &health_back, &health_dst, stage.bump);
+			if (stage.mode < StageMode_2P)
+			{
+				//Perform health checks
+				if (stage.player_state[0].health <= 0)
+				{
+					//Player has died
+					stage.player_state[0].health = 0;
+					stage.state = StageState_Dead;
+				}
+				if (stage.player_state[0].health > 20000)
+					stage.player_state[0].health = 20000;
+				
+				//Draw health heads
+				Stage_DrawHealth(stage.player_state[0].health, stage.player->health_i,    1);
+				Stage_DrawHealth(stage.player_state[0].health, stage.opponent->health_i, -1);
+				
+				//Draw health bar
+				RECT health_fill = {0, 0, 256 - (256 * stage.player_state[0].health / 20000), 8};
+				RECT health_back = {0, 8, 256, 8};
+				RECT_FIXED health_dst = {FIXED_DEC(-128,1), (SCREEN_HEIGHT2 - 32) << FIXED_SHIFT, 0, FIXED_DEC(8,1)};
+				if (stage.downscroll)
+					health_dst.y = -health_dst.y - health_dst.h;
+				
+				health_dst.w = health_fill.w << FIXED_SHIFT;
+				Stage_DrawTex(&stage.tex_hud1, &health_fill, &health_dst, stage.bump);
+				health_dst.w = health_back.w << FIXED_SHIFT;
+				Stage_DrawTex(&stage.tex_hud1, &health_back, &health_dst, stage.bump);
+			}
 			
 			//Hardcoded stage stuff
 			switch (stage.stage_id)
@@ -1605,45 +1826,6 @@ void Stage_Tick(void)
 			//Draw stage background
 			if (stage.back->draw_bg != NULL)
 				stage.back->draw_bg(stage.back);
-			
-			/*
-			//Draw curtains
-			RECT curtain_src = {0, 0, 128, 256};
-			RECT_FIXED curtain1_dst = {
-				FIXED_DEC(-300,1) - stage.camera.x,
-				FIXED_DEC(-350,1) - stage.camera.y,
-				FIXED_DEC(200,1),
-				FIXED_DEC(400,1)
-			};
-			RECT_FIXED curtainr_dst = {
-				FIXED_DEC(300,1) - stage.camera.x,
-				FIXED_DEC(-350,1) - stage.camera.y,
-				FIXED_DEC(-200,1),
-				FIXED_DEC(400,1)
-			};
-			
-			Stage_DrawTex(&stage.tex_back1, &curtain_src, &curtain1_dst, FIXED_MUL(FIXED_DEC(95,100), stage.bump));
-			Stage_DrawTex(&stage.tex_back1, &curtain_src, &curtainr_dst, FIXED_MUL(FIXED_DEC(95,100), stage.bump));
-			
-			//Draw stage
-			RECT stagel_src = {0, 0, 256, 128};
-			RECT_FIXED stage1_dst = {
-				FIXED_DEC(-500,1) - stage.camera.x,
-				FIXED_DEC(32,1) - stage.camera.y,
-				FIXED_DEC(500,1),
-				FIXED_DEC(250,1)
-			};
-			RECT stager_src = {0, 128, 256, 128};
-			RECT_FIXED stager_dst = {
-				-stage.camera.x,
-				FIXED_DEC(32,1) - stage.camera.y,
-				FIXED_DEC(500,1),
-				FIXED_DEC(250,1)
-			};
-			
-			Stage_DrawTex(&stage.tex_back0, &stagel_src, &stage1_dst, stage.bump);
-			Stage_DrawTex(&stage.tex_back0, &stager_src, &stager_dst, stage.bump);
-			*/
 			break;
 		}
 		case StageState_Dead: //Start BREAK animation and reading extra data from CD
@@ -1664,6 +1846,7 @@ void Stage_Tick(void)
 			ObjectList_Free(&stage.objlist_bg);
 			
 			//Free opponent and girlfriend
+			Stage_SwapChars();
 			Character_Free(stage.opponent);
 			stage.opponent = NULL;
 			Character_Free(stage.gf);
@@ -1738,3 +1921,115 @@ void Stage_Tick(void)
 			break;
 	}
 }
+
+#ifdef PSXF_NETWORK
+void Stage_NetHit(Packet *packet)
+{
+	//Reject if not in stage
+	if (gameloop != GameLoop_Stage)
+		return;
+	
+	//Get packet info
+	u16 i = ((*packet)[1] << 0) | ((*packet)[2] << 8);
+	u32 hit_score = ((*packet)[3] << 0) | ((*packet)[4] << 8) | ((*packet)[5] << 16) | ((*packet)[6] << 24);
+	u8 hit_type = (*packet)[7];
+	u16 hit_combo = ((*packet)[8] << 0) | ((*packet)[9] << 8);
+	
+	//Get note pointer
+	if (i >= stage.num_notes)
+		return;
+	
+	Note *note = &stage.notes[i];
+	u8 type = note->type & 0x3;
+	
+	u8 opp_flag = (stage.mode == StageMode_Net1) ? NOTE_FLAG_OPPONENT : 0;
+	if ((note->type & NOTE_FLAG_OPPONENT) != opp_flag)
+		return;
+	
+	//Update game state
+	PlayerState *this = &stage.player_state[(stage.mode == StageMode_Net1) ? 1 : 0];
+	stage.notes[i].type |= NOTE_FLAG_HIT;
+	
+	this->score = hit_score;
+	this->refresh_score = true;
+	this->combo = hit_combo;
+	
+	if (note->type & NOTE_FLAG_SUSTAIN)
+	{
+		//Hit a sustain
+		Stage_StartVocal();
+		this->arrow_hitan[type] = stage.step_time;
+		this->character->set_anim(this->character, note_anims[type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0]);
+	}
+	else if (!(note->type & NOTE_FLAG_MINE))
+	{
+		//Hit a note
+		Stage_StartVocal();
+		this->arrow_hitan[type] = stage.step_time;
+		this->character->set_anim(this->character, note_anims[type & 0x3][(note->type & NOTE_FLAG_ALT_ANIM) != 0]);
+		
+		//Create combo object
+		Obj_Combo *combo = Obj_Combo_New(
+			this->character->focus_x,
+			this->character->focus_y,
+			hit_type,
+			this->combo >= 10 ? this->combo : 0xFFFF
+		);
+		if (combo != NULL)
+			ObjectList_Add(&stage.objlist_fg, (Object*)combo);
+		
+		//Create note splashes if SICK
+		if (hit_type == 0)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				//Create splash object
+				Obj_Splash *splash = Obj_Splash_New(
+					note_x[(note->type & 0x7) ^ stage.note_swap],
+					note_y * (stage.downscroll ? -1 : 1),
+					type
+				);
+				if (splash != NULL)
+					ObjectList_Add(&stage.objlist_splash, (Object*)splash);
+			}
+		}
+	}
+	else
+	{
+		//Hit a mine
+		this->arrow_hitan[type & 0x3] = -1;
+		if (this->character->spec & CHAR_SPEC_MISSANIM)
+			this->character->set_anim(this->character, note_anims[type & 0x3][1]);
+		else
+			this->character->set_anim(this->character, note_anims[type & 0x3][0]);
+	}
+}
+
+void Stage_NetMiss(Packet *packet)
+{
+	//Reject if not in stage
+	if (gameloop != GameLoop_Stage)
+		return;
+	
+	//Get packet info
+	u8 type = (*packet)[1];
+	u32 hit_score = ((*packet)[2] << 0) | ((*packet)[3] << 8) | ((*packet)[4] << 16) | ((*packet)[5] << 24);
+	
+	//Update game state
+	PlayerState *this = &stage.player_state[(stage.mode == StageMode_Net1) ? 1 : 0];
+	
+	this->score = hit_score;
+	this->refresh_score = true;
+	
+	//Missed
+	if (!(type & ~0x3))
+	{
+		this->arrow_hitan[type] = -1;
+		if (this->character->spec & CHAR_SPEC_MISSANIM)
+			this->character->set_anim(this->character, note_anims[type][1]);
+		else
+			this->character->set_anim(this->character, note_anims[type][0]);
+	}
+	Stage_MissNote(this);
+}
+#endif

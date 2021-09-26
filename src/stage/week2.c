@@ -24,12 +24,12 @@ void Back_Week2_DrawBG(StageBack *back)
 	fy = stage.camera.y;
 	
 	//Draw window
-	RECT window_src = {0, 0, 228, 114};
+	RECT window_src = {0, 0, 256, 144};
 	RECT_FIXED window_dst = {
-		FIXED_DEC(-225,1) - fx,
-		FIXED_DEC(-128,1) - fy,
-		FIXED_DEC(415,1),
-		FIXED_DEC(200,1)
+		FIXED_DEC(-240,1) - fx,
+		FIXED_DEC(-155,1) - fy,
+		FIXED_DEC(512,1),
+		FIXED_DEC(300,1)
 	};
 	
 	Stage_DrawTex(&this->tex_back1, &window_src, &window_dst, stage.camera.bzoom);

@@ -59,7 +59,7 @@ static const CharFrame char_xmasp_frame[] = {
 	
 	{XmasP_ArcMain_DownA0, {0,   0, 126, 216}, { 95, 200}}, //8 down a 1
 	{XmasP_ArcMain_DownA1, {0,   0, 127, 207}, { 95, 192}}, //9 down a 2
-	{XmasP_ArcMain_DownB0, {0,   0, 147, 212}, { 80, 192}}, //10 down b 1
+	{XmasP_ArcMain_DownB0, {0,   0, 147, 212}, { 80, 195}}, //10 down b 1
 	{XmasP_ArcMain_DownB1, {0,   0, 143, 207}, { 80, 192}}, //11 down b 2
 	
 	{XmasP_ArcMain_UpA0, {0,   0, 159, 227}, { 58, 213}}, //12 up a 1
@@ -104,6 +104,20 @@ void Char_XmasP_Tick(Character *character)
 {
 	Char_XmasP *this = (Char_XmasP*)character;
 	
+	if ((stage.stage_id == StageId_1_1) && stage.song_step >= 764)
+	{
+		this->character.focus_x = FIXED_DEC(25, 1);
+		this->character.focus_y = FIXED_DEC(-100, 1);
+		this->character.focus_zoom = FIXED_DEC(13, 10);
+	}
+
+	if ((stage.stage_id == StageId_1_1) && stage.song_step >= 784)
+	{
+		this->character.focus_x = FIXED_DEC(25, 1);
+		this->character.focus_y = FIXED_DEC(-100, 1);
+		this->character.focus_zoom = FIXED_DEC(1, 1);
+	}
+
 	//Perform idle dance
 	Character_PerformIdle(character);
 	

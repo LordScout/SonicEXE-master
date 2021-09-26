@@ -30,12 +30,14 @@
 			<!-- Fonts -->
 			<dir name = "font">
 				<file name = "boldfont.tim" type = "data" source = "iso/font/boldfont.tim"/>
+				<file name = "arial.tim" type = "data" source = "iso/font/arial.tim"/>
 			</dir>
 			
 			<!-- Stage assets -->
 			<dir name = "stage">
 				<file name = "hud0.tim" type = "data" source = "iso/stage/hud0.tim"/>
 				<file name = "hud1.tim" type = "data" source = "iso/stage/hud1.tim"/>
+				<file name = "hud0weeb.tim" type = "data" source = "iso/stage/hud0weeb.tim"/>
 			</dir>
 			
 			<!-- Week 1 assets -->
@@ -233,6 +235,7 @@
 				
 				<!-- Senpai assets -->
 				<file name = "senpai.arc" type = "data" source = "iso/senpai/main.arc"/>
+				<file name = "senpaim.arc" type = "data" source = "iso/senpaim/main.arc"/>
 				
 				<!-- Tankman Captain assets -->
 				<file name = "tank.arc" type = "data" source = "iso/tank/main.arc"/>
@@ -255,9 +258,17 @@
 				<dummy sectors="128"/>
 				<file name = "week1b.xa" type = "xa" source = "iso/music/week1b.xa"/>
 				<dummy sectors="128"/>
+				<file name = "week2a.xa" type = "xa" source = "iso/music/week2a.xa"/>
+				<dummy sectors="128"/>
+				<file name = "week2b.xa" type = "xa" source = "iso/music/week2b.xa"/>
+				<dummy sectors="128"/>
 				<file name = "week3a.xa" type = "xa" source = "iso/music/week3a.xa"/>
 				<dummy sectors="128"/>
 				<file name = "week3b.xa" type = "xa" source = "iso/music/week3b.xa"/>
+				<dummy sectors="128"/>
+				<file name = "week4a.xa" type = "xa" source = "iso/music/week4a.xa"/>
+				<dummy sectors="128"/>
+				<file name = "week4b.xa" type = "xa" source = "iso/music/week4b.xa"/>
 				<dummy sectors="128"/>
 			</dir>
 			

@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #ifndef _STAGE_H
 #define _STAGE_H
 
@@ -9,6 +15,8 @@
 #include "character.h"
 #include "player.h"
 #include "object.h"
+
+#include "network.h"
 
 //Stage constants
 #define INPUT_LEFT  (PAD_LEFT  | PAD_SQUARE)
@@ -86,9 +94,19 @@ typedef enum
 
 typedef enum
 {
+	StageMode_Normal,
+	StageMode_Swap,
+	StageMode_2P,
+	StageMode_Net1,
+	StageMode_Net2,
+} StageMode;
+
+typedef enum
+{
 	StageTrans_Menu,
 	StageTrans_NextSong,
 	StageTrans_Reload,
+	StageTrans_Disconnect,
 } StageTrans;
 
 //Stage background
@@ -149,8 +167,26 @@ typedef struct
 
 typedef struct
 {
+	Character *character;
+	
+	fixed_t arrow_hitan[4]; //Arrow hit animation for presses
+	
+	s16 health;
+	u16 combo;
+	
+	boolean refresh_score;
+	s32 score, max_score;
+	char score_text[13];
+	
+	u16 pad_held, pad_press;
+} PlayerState;
+
+typedef struct
+{
 	//Stage settings
-	boolean kade, ghost, downscroll, expsync;
+	boolean ghost, downscroll, expsync;
+	s32 mode;
+	
 	u32 offset;
 	
 	//HUD textures
@@ -164,11 +200,11 @@ typedef struct
 	IO_Data chart_data;
 	Section *sections;
 	Note *notes;
+	size_t num_notes;
 	
 	fixed_t speed;
-	fixed_t step_crochet;
+	fixed_t step_crochet, step_time;
 	fixed_t early_safe, late_safe, early_sus_safe, late_sus_safe;
-	fixed_t note_speed;
 	
 	//Stage state
 	boolean story;
@@ -200,17 +236,12 @@ typedef struct
 	u16 step_base;
 	Section *section_base;
 	
-	u16 song_step;
+	s16 song_step;
 	
 	u8 gf_speed; //Typically 4 steps, changes in Fresh
 	
-	u8 arrow_hitan[4]; //Arrow hit animation for presses
-	
-	s16 health;
-	u16 combo;
-	
-	s32 score;
-	char score_text[13];
+	PlayerState player_state[2];
+	s32 max_score;
 	
 	enum
 	{
@@ -222,7 +253,7 @@ typedef struct
 		StageState_DeadDecide, //Decided
 	} state;
 	
-	u16 pad_held, pad_press;
+	u8 note_swap;
 	
 	//Object lists
 	ObjectList objlist_splash, objlist_fg, objlist_bg;
@@ -239,5 +270,10 @@ void Stage_DrawTexArb(Gfx_Tex *tex, const RECT *src, const POINT_FIXED *p0, cons
 void Stage_Load(StageId id, StageDiff difficulty, boolean story);
 void Stage_Unload();
 void Stage_Tick();
+
+#ifdef PSXF_NETWORK
+void Stage_NetHit(Packet *packet);
+void Stage_NetMiss(Packet *packet);
+#endif
 
 #endif

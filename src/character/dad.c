@@ -49,10 +49,10 @@ static const CharFrame char_dad_frame[] = {
 	{Dad_ArcMain_Idle2, {  0,   0, 128, 182}, { 36, 178}}, //2 idle 3
 	{Dad_ArcMain_Idle3, {  0,   0, 129, 182}, { 37, 178}}, //3 idle 4
 	
-	{Dad_ArcMain_Left, {  0,   0,  228, 141}, {155, 140}}, //4 left 1
-	{Dad_ArcMain_Left1, {  0,   0, 226, 142}, {156, 141}}, //5 left 2
-	{Dad_ArcMain_Left2, {  0,   0, 225, 142}, {156, 141}}, //5 left 2
-	{Dad_ArcMain_Left3, {  0,   0, 226, 142}, {156, 141}}, //5 left 2
+	{Dad_ArcMain_Left, {  0,   0,  228, 141}, {155, 130}}, //4 left 1
+	{Dad_ArcMain_Left1, {  0,   0, 226, 142}, {156, 131}}, //5 left 2
+	{Dad_ArcMain_Left2, {  0,   0, 225, 142}, {156, 131}}, //5 left 2
+	{Dad_ArcMain_Left3, {  0,   0, 226, 142}, {156, 131}}, //5 left 2
 
 	{Dad_ArcMain_Down, {  0,   0, 154, 137}, { 43, 133}}, //6 down 1
 	{Dad_ArcMain_Down1, {  0,   0, 156, 141}, { 45, 137}}, //7 down 2
@@ -98,6 +98,34 @@ void Char_Dad_Tick(Character *character)
 {
 	Char_Dad *this = (Char_Dad*)character;
 	
+	if ((stage.stage_id == StageId_1_2) && stage.song_step >= 908)
+	{
+		this->character.focus_x = FIXED_DEC(65, 1);
+		this->character.focus_y = FIXED_DEC(-115, 1);
+		this->character.focus_zoom = FIXED_DEC(13, 10);
+	}
+
+	if ((stage.stage_id == StageId_1_2) && stage.song_step >= 912)
+	{
+		this->character.focus_x = FIXED_DEC(65, 1);
+		this->character.focus_y = FIXED_DEC(-115, 1);
+		this->character.focus_zoom = FIXED_DEC(18, 10);
+	}
+
+	if ((stage.stage_id == StageId_1_2) && stage.song_step >= 916)
+	{
+		this->character.focus_x = FIXED_DEC(65, 1);
+		this->character.focus_y = FIXED_DEC(-115, 1);
+		this->character.focus_zoom = FIXED_DEC(20, 10);
+	}
+
+	if ((stage.stage_id == StageId_1_2) && stage.song_step >= 920)
+	{
+		this->character.focus_x = FIXED_DEC(65, 1);
+		this->character.focus_y = FIXED_DEC(-115, 1);
+		this->character.focus_zoom = FIXED_DEC(1, 1);
+	}
+
 	//Perform idle dance
 	Character_PerformIdle(character);
 	

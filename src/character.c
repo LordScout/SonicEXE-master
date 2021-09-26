@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include "character.h"
 
 #include "mem.h"
@@ -22,6 +28,7 @@ void Character_Init(Character *this, fixed_t x, fixed_t y)
 	this->y = y;
 	
 	this->set_anim(this, CharAnim_Idle);
+	this->pad_held = 0;
 }
 
 void Character_Draw(Character *this, Gfx_Tex *tex, const CharFrame *cframe)
@@ -69,7 +76,7 @@ void Character_PerformIdle(Character *this)
 	if (stage.flag & STAGE_FLAG_JUST_STEP)
 	{
 		if (Animatable_Ended(&this->animatable) &&
-			(this->animatable.anim != CharAnim_Left &&
+		    (this->animatable.anim != CharAnim_Left &&
 		     this->animatable.anim != CharAnim_LeftAlt &&
 		     this->animatable.anim != CharAnim_Down &&
 		     this->animatable.anim != CharAnim_DownAlt &&

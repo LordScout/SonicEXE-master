@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #ifndef _PAD_H
 #define _PAD_H
 
@@ -29,7 +35,13 @@ typedef struct
 	u8 right_x, right_y;
 } Pad;
 
-extern Pad pad_state;
+extern Pad pad_state, pad_state_2;
+
+#ifdef PSXF_NETWORK
+	#define PAD_TYPE_CHARS 0x20
+	extern char pad_type[PAD_TYPE_CHARS + 1];
+	extern boolean pad_backspace;
+#endif
 
 //Pad functions
 void Pad_Init(void);

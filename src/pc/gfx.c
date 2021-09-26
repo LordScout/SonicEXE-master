@@ -1,3 +1,9 @@
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include "../gfx.h"
 
 #include "../main.h"
@@ -695,9 +701,9 @@ void Gfx_LoadTex(Gfx_Tex *tex, IO_Data data, Gfx_LoadTex_Flag flag)
 			
 			//Convert palette
 		#if PSXF_GL == PSXF_GL_ES
-			u8 tex_palette[16][4]; //RGBA8888
+			static u8 tex_palette[16][4]; //RGBA8888
 		#else
-			u8 tex_palette[16][2]; //RGBA5551
+			static u8 tex_palette[16][2]; //RGBA5551
 		#endif
 			
 			u8 *tex_palette_p = &tex_palette[0][0];
@@ -756,9 +762,9 @@ void Gfx_LoadTex(Gfx_Tex *tex, IO_Data data, Gfx_LoadTex_Flag flag)
 			
 			//Convert art
 		#if PSXF_GL == PSXF_GL_ES
-			u8 tex_data[256*256][4]; //RGBA8888
+			static u8 tex_data[256*256][4]; //RGBA8888
 		#else
-			u8 tex_data[256*256][2]; //RGBA5551
+			static u8 tex_data[256*256][2]; //RGBA5551
 		#endif
 			
 			u8 *tex_data_p = &tex_data[0][0];
