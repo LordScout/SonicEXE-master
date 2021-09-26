@@ -98,7 +98,8 @@ void Char_Mom_Tick(Character *character)
 	Char_Mom *this = (Char_Mom*)character;
 	
 	//Perform idle dance
-	Character_PerformIdle(character);
+	if ((character->pad_held & (INPUT_LEFT | INPUT_DOWN | INPUT_UP | INPUT_RIGHT)) == 0)
+		Character_PerformIdle(character);
 	
 	//Animate and draw
 	Animatable_Animate(&character->animatable, (void*)this, Char_Mom_SetFrame);
@@ -140,6 +141,8 @@ Character *Char_Mom_New(fixed_t x, fixed_t y)
 	Character_Init((Character*)this, x, y);
 	
 	//Set character stage information
+	this->character.spec = 0;
+	
 	this->character.health_i = 4;
 	
 	this->character.focus_x = FIXED_DEC(65,1);

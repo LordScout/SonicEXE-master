@@ -430,7 +430,7 @@ void Menu_Tick(void)
 			//Initialize page
 			if (menu.page_swap)
 			{
-				menu.page_state.title.logo_bump = (FIXED_DEC(7,1) / 24) - 1;
+				menu.page_state.title.logo_bump = FIXED_DEC(2,1);//(FIXED_DEC(7,1) / 24) - 1;
 				menu.page_state.title.fade = FIXED_DEC(255,1);
 				menu.page_state.title.fadespd = FIXED_DEC(90,1);
 			}

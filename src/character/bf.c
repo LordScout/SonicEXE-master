@@ -202,8 +202,7 @@ void Char_BF_Tick(Character* character)
 		this->character.focus_y = FIXED_DEC(-90, 1);
 		this->character.focus_zoom = FIXED_DEC(1, 1);
 	}
-
-
+	
 	//Handle animation updates
 	if ((character->pad_held & (INPUT_LEFT | INPUT_DOWN | INPUT_UP | INPUT_RIGHT)) == 0 ||
 	    (character->animatable.anim != CharAnim_Left &&
@@ -216,14 +215,10 @@ void Char_BF_Tick(Character* character)
 	{
 		//Perform idle dance
 		if (Animatable_Ended(&character->animatable) &&
-			(character->animatable.anim != CharAnim_Left &&
-		     character->animatable.anim != CharAnim_LeftAlt &&
-		     character->animatable.anim != CharAnim_Down &&
-		     character->animatable.anim != CharAnim_DownAlt &&
-		     character->animatable.anim != CharAnim_Up &&
-		     character->animatable.anim != CharAnim_UpAlt &&
-		     character->animatable.anim != CharAnim_Right &&
-		     character->animatable.anim != CharAnim_RightAlt) &&
+		    (character->animatable.anim != CharAnim_Left &&
+			 character->animatable.anim != CharAnim_Down &&
+			 character->animatable.anim != CharAnim_Up &&
+			 character->animatable.anim != CharAnim_Right) &&
 			(stage.song_step & 0x7) == 0)
 			character->set_anim(character, CharAnim_Idle);
 		
@@ -415,6 +410,8 @@ Character *Char_BF_New(fixed_t x, fixed_t y)
 	Character_Init((Character*)this, x, y);
 	
 	//Set character stage information
+	this->character.spec = CHAR_SPEC_MISSANIM;
+	
 	this->character.health_i = 0;
 	
 	this->character.focus_x = FIXED_DEC(-50,1);
